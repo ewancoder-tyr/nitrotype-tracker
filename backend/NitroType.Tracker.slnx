@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="NitroType.Tracker.Api\NitroType.Tracker.Api.csproj" Type="Classic C#" />
+  <Project Path="NitroType.Tracker.Domain\NitroType.Tracker.Domain.csproj" Type="Classic C#" />
+</Solution>
