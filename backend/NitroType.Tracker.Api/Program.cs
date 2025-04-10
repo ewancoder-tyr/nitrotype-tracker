@@ -18,7 +18,8 @@ var app = builder.Build();
 
 app.ConfigureTyrApplication(config);
 
-var retriever = new SmartDataRetriever();
+var rawRepo = new RawDataRepository(app.Configuration["DbConnectionString"] ?? throw new InvalidOperationException("DB connection string is not set."));
+var retriever = new SmartDataRetriever(rawRepo);
 retriever.RegisterTeam("KECATS");
 retriever.RegisterTeam("SSH");
 await retriever.RunAsync();

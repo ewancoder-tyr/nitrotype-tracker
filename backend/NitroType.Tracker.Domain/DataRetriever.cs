@@ -1,6 +1,70 @@
 using System.Collections.Concurrent;
+using Npgsql;
+using Exception = System.Exception;
 
 namespace NitroType.Tracker.Domain;
+
+public sealed class RawDataRepository
+{
+    private readonly NpgsqlDataSource _dataSource;
+    public RawDataRepository(string connectionString)
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        _dataSource = dataSourceBuilder.Build();
+        Task.Run(async () =>
+        {
+            var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+            var cmd =
+                new NpgsqlCommand(
+                    "CREATE TABLE IF NOT EXISTS \"raw_data\" (\"team\" VARCHAR(50), \"data\" VARCHAR, \"timestamp\" timestamp);");
+            cmd.Connection = connection;
+
+            try
+            {
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                Console.WriteLine("success");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            finally
+            {
+                await cmd.DisposeAsync().ConfigureAwait(false);
+                await connection.DisposeAsync().ConfigureAwait(false);
+            }
+        });
+    }
+
+    public async ValueTask SaveAsync(string team, string data)
+    {
+        var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+        var cmd =
+            new NpgsqlCommand(
+                "INSERT INTO \"raw_data\" (\"team\", \"data\", \"timestamp\") VALUES (@team, @data, @timestamp);");
+        cmd.Parameters.AddWithValue("@team", team);
+        cmd.Parameters.AddWithValue("@data", data);
+        cmd.Parameters.AddWithValue("@timestamp", DateTime.UtcNow);
+        cmd.Connection = connection;
+
+        try
+        {
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            Console.WriteLine("success");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+}
 
 public sealed class SmartDataRetriever
 {
@@ -8,6 +72,12 @@ public sealed class SmartDataRetriever
     private readonly Random _random = Random.Shared;
     private readonly ConcurrentDictionary<string, DateTime> _queriedTeams = new();
     private readonly DataRetriever _dataRetriever = new();
+    private readonly RawDataRepository _rawRepo;
+
+    public SmartDataRetriever(RawDataRepository rawRepo)
+    {
+        _rawRepo = rawRepo;
+    }
 
     // TODO: Persist to DB.
     private readonly List<RawDataEntry> _data = new();
@@ -37,10 +107,12 @@ public sealed class SmartDataRetriever
                 {
                     // Retrieve data for the team.
                     var teamName = item.Key;
-                    var data = await _dataRetriever.RetrieveDataAsync(teamName)
+                    //var data = await _dataRetriever.RetrieveDataAsync(teamName)
+                    var data = await _dataRetriever.RetrieveRawDataAsync(teamName)
                         .ConfigureAwait(false);
                     _queriedTeams[item.Key] = DateTime.UtcNow;
-                    _data.Add(new(teamName, data, DateTime.UtcNow));
+                    await _rawRepo.SaveAsync(teamName, data).ConfigureAwait(false);
+                    //_data.Add(new(teamName, data, DateTime.UtcNow));
                 }
                 catch (Exception exception)
                 {
@@ -66,7 +138,8 @@ public sealed class SmartDataRetriever
 
 public sealed class DataRetriever
 {
-    public async ValueTask<NitroTypeData> RetrieveDataAsync(string teamName)
+    //public async ValueTask<NitroTypeData> RetrieveDataAsync(string teamName)
+    public async ValueTask<string> RetrieveRawDataAsync(string teamName)
     {
         using var client = new HttpClient();
 
@@ -78,8 +151,10 @@ public sealed class DataRetriever
         var json = await response.Content.ReadAsStringAsync()
             .ConfigureAwait(false);
 
-        return JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new InvalidOperationException("Could not deserialize json.");
+        return json;
+
+        /*return JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new InvalidOperationException("Could not deserialize json.");*/
     }
 }
 
