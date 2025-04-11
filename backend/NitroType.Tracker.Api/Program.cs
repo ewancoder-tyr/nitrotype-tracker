@@ -67,8 +67,8 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
         var forDiff = user.FirstOrDefault(x => x.Timestamp <= DateTime.UtcNow - TimeSpan.FromDays(1))
             ?? user.FirstOrDefault();
         var periodStats = now - previous!;
-        periodStats.AccuracyDiff = periodStats.Accuracy == 0 ? 0 : periodStats.Accuracy - forDiff!.Accuracy;
-        periodStats.AverageSpeedDiff = periodStats.AverageSpeed == 0 ? 0 : periodStats.AverageSpeed - forDiff!.AverageSpeed;
+        periodStats.AccuracyDiff = now.Accuracy == 0 ? 0 : now.Accuracy - forDiff!.Accuracy;
+        periodStats.AverageSpeedDiff = now.AverageSpeed == 0 ? 0 : now.AverageSpeed - forDiff!.AverageSpeed;
         periodStats.RacesPlayedDiff = now.RacesPlayed - forDiff!.RacesPlayed;
         periodStatses.Add(periodStats);
     }
