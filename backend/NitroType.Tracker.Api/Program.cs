@@ -64,7 +64,12 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
         var user = users[username];
         var now = user.LastOrDefault()!;
         var previous = user.FirstOrDefault(x => x.Timestamp > querySince);
+        var forDiff = user.FirstOrDefault(x => x.Timestamp <= DateTime.UtcNow - TimeSpan.FromDays(1))
+            ?? user.FirstOrDefault();
         var periodStats = now - previous!;
+        periodStats.AccuracyDiff = periodStats.Accuracy == 0 ? 0 : periodStats.Accuracy - forDiff!.Accuracy;
+        periodStats.AverageSpeedDiff = periodStats.AverageSpeed == 0 ? 0 : periodStats.AverageSpeed - forDiff!.AverageSpeed;
+        periodStats.RacesPlayedDiff = now.RacesPlayed - forDiff!.RacesPlayed;
         periodStatses.Add(periodStats);
     }
 
@@ -88,6 +93,10 @@ public sealed class PlayerInfo
     public decimal AverageTextLength => RacesPlayed == 0 ? 0 : (decimal)Typed / RacesPlayed;
     // ReSharper disable once ArrangeRedundantParentheses
     public decimal AverageSpeed => Secs == 0 ? 0 : (60m / 5) * Typed / Secs;
+
+    public decimal AccuracyDiff { get; set; }
+    public decimal AverageSpeedDiff { get; set; }
+    public decimal RacesPlayedDiff { get; set; }
 
     public string TimeSpent
     {
