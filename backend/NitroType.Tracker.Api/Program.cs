@@ -22,6 +22,106 @@ var rawRepo = new RawDataRepository(app.Configuration["DbConnectionString"] ?? t
 var retriever = new SmartDataRetriever(rawRepo);
 retriever.RegisterTeam("KECATS");
 retriever.RegisterTeam("SSH");
-await retriever.RunAsync();
+var task = retriever.RunAsync();
+
+app.MapGet("/api/statistics/{team}", async (string team) =>
+{
+    var processor = new DataProcessor(app.Configuration["DbConnectionString"] ?? throw new InvalidOperationException("DB connection string is not set."));
+    var processed = new List<PlayerInfo>();
+    await foreach (var item in processor.GetAllEntriesAsync(team))
+    {
+        if (item.Data.Results is null || item.Data.Results.Season is null)
+            continue;
+
+        try
+        {
+            processed.AddRange(item.Data.Results.Season.Select(s => new PlayerInfo
+            {
+                Username = s.Username!,
+                Team = item.Team,
+                Typed = s.Typed!.Value,
+                Errors = s.Errs!.Value,
+                Name = s.DisplayName ?? s.Username!,
+                RacesPlayed = s.RacesPlayed!.Value,
+                Timestamp = item.Timestamp,
+                Secs = s.Secs!.Value
+            }));
+        }
+        catch
+        {
+            continue;
+        }
+    }
+
+    //var period = TimeSpan.FromDays(1);
+    var querySince = new DateTime(2025, 4, 10); // Start of the league season.
+    var users = processed.GroupBy(x => x.Username).ToDictionary(x => x.Key, x => x.OrderBy(a => a.Timestamp).ToList());
+
+    var periodStatses = new List<PlayerInfo>();
+    foreach (var username in users.Keys)
+    {
+        var user = users[username];
+        var now = user.LastOrDefault()!;
+        var previous = user.FirstOrDefault(x => x.Timestamp > querySince);
+        var periodStats = now - previous!;
+        periodStatses.Add(periodStats);
+    }
+
+    return periodStatses;
+});
 
 await app.RunAsync();
+
+public sealed class PlayerInfo
+{
+    public required string Username { get; set; }
+    public required string Team { get; set; }
+    public required long Typed { get; set; }
+    public required long Errors { get; set; }
+    public required string Name { get; set; }
+    public required int RacesPlayed { get; set; }
+    public required DateTime Timestamp { get; set; }
+    public required long Secs { get; set; }
+
+    public decimal Accuracy => Typed == 0 ? 0 : 100m * (Typed - Errors) / Typed;
+    public decimal AverageTextLength => RacesPlayed == 0 ? 0 : (decimal)Typed / RacesPlayed;
+    // ReSharper disable once ArrangeRedundantParentheses
+    public decimal AverageSpeed => Secs == 0 ? 0 : (60m / 5) * Typed / Secs;
+
+    public string TimeSpent
+    {
+        get
+        {
+            var time = TimeSpan.FromSeconds(Secs);
+            var parts = new List<string>();
+            if (time.Days > 0)
+                parts.Add($"{time.Days} day{(time.Days > 1 ? "s" : "")}");
+            if (time.Hours > 0)
+                parts.Add($"{time.Hours} hour{(time.Hours > 1 ? "s" : "")}");
+            if (time.Minutes > 0)
+                parts.Add($"{time.Minutes} minute{(time.Minutes > 1 ? "s" : "")}");
+            if (time.Seconds > 0)
+                parts.Add($"{time.Seconds} second{(time.Minutes > 1 ? "s" : "")}");
+
+            return string.Join(" ", parts);
+        }
+    }
+
+    public static PlayerInfo operator -(PlayerInfo one, PlayerInfo two)
+    {
+        if (one.Username != two.Username)
+            throw new InvalidOperationException("Cannot subtract different users.");
+
+        return new PlayerInfo
+        {
+            Username = one.Username,
+            Name = one.Name,
+            Team = one.Team,
+            Timestamp = one.Timestamp,
+            Typed = one.Typed - two.Typed,
+            Secs = one.Secs - two.Secs,
+            Errors = one.Errors - two.Errors,
+            RacesPlayed = one.RacesPlayed - two.RacesPlayed
+        };
+    }
+}

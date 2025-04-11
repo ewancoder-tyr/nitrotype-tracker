@@ -85,7 +85,7 @@ public sealed class SmartDataRetriever
     }
 
     // TODO: Persist to DB.
-    private readonly List<RawDataEntry> _data = new();
+    private readonly List<RawTeamEntry> _data = new();
 
     public void RegisterTeam(string teamName)
     {
@@ -163,7 +163,47 @@ public sealed class DataRetriever
     }
 }
 
-public sealed record RawDataEntry(string Team, NitroTypeData Data, DateTime Timestamp);
+public sealed class DataProcessor
+{
+    private readonly NpgsqlDataSource _dataSource;
+
+    public DataProcessor(string connectionString)
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        _dataSource = dataSourceBuilder.Build();
+    }
+
+    public async IAsyncEnumerable<RawTeamEntry> GetAllEntriesAsync(string team)
+    {
+        // TODO: Create the database/table if not created. Or use migrations.
+        var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+        var cmd = new NpgsqlCommand("SELECT data, timestamp, team FROM raw_data where team = @team;");
+        cmd.Connection = connection;
+        cmd.Parameters.AddWithValue("@team", team);
+
+        try
+        {
+            var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            while (await reader.ReadAsync().ConfigureAwait(false))
+            {
+                var json = reader.GetString(0);
+                var timestamp = reader.GetDateTime(1);
+
+                var data = JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                           ?? throw new InvalidOperationException("Could not deserialize the json.");
+
+                yield return new(reader.GetString(2), data, timestamp);
+            }
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+}
+
+public sealed record RawTeamEntry(string Team, NitroTypeData Data, DateTime Timestamp);
 
 // Root object
 public record NitroTypeData(
