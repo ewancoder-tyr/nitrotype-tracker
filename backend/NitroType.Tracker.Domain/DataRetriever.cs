@@ -14,14 +14,18 @@ public sealed class RawDataRepository
         Task.Run(async () =>
         {
             var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
-            var cmd =
-                new NpgsqlCommand(
-                    "CREATE TABLE IF NOT EXISTS \"raw_data\" (\"team\" VARCHAR(50), \"data\" VARCHAR, \"timestamp\" timestamp);");
+            var cmd = new NpgsqlCommand(
+                "CREATE TABLE IF NOT EXISTS \"raw_data\" (\"team\" VARCHAR(50), \"data\" VARCHAR, \"timestamp\" timestamp);");
             cmd.Connection = connection;
+
+            var cmd2 = new NpgsqlCommand(
+                "ALTER TABLE \"raw_data\" ADD COLUMN IF NOT EXISTS \"id\" BIGSERIAL PRIMARY KEY;");
+            cmd2.Connection = connection;
 
             try
             {
                 await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                await cmd2.ExecuteNonQueryAsync().ConfigureAwait(false);
                 Console.WriteLine("success");
             }
             catch (Exception e)
