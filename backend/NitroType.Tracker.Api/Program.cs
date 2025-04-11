@@ -26,6 +26,7 @@ var task = retriever.RunAsync();
 
 app.MapGet("/api/statistics/{team}", async (string team) =>
 {
+    team = team.ToUpperInvariant();
     var processor = new DataProcessor(app.Configuration["DbConnectionString"] ?? throw new InvalidOperationException("DB connection string is not set."));
     var processed = new List<PlayerInfo>();
     await foreach (var item in processor.GetAllEntriesAsync(team))
