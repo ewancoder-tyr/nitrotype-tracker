@@ -13,6 +13,7 @@ public sealed class RawDataRepository
         _dataSource = dataSourceBuilder.Build();
         Task.Run(async () =>
         {
+            // TODO: Create the database itself if not created. Or use migrations.
             var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
             var cmd = new NpgsqlCommand(
                 "CREATE TABLE IF NOT EXISTS \"raw_data\" (\"team\" VARCHAR(50), \"data\" VARCHAR, \"timestamp\" timestamp);");
