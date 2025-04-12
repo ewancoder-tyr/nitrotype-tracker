@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using NitroType.Tracker.Domain;
+using Npgsql;
 using Tyr.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,20 +16,40 @@ var config = TyrHostConfiguration.Default(
 
 await builder.ConfigureTyrApplicationBuilderAsync(config);
 
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<DataRetriever>();
+builder.Services.AddSingleton<RawDataRepository>();
+builder.Services.AddSingleton<SmartDataRetriever>();
+builder.Services.AddSingleton<DataProcessor>();
+
+builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
+{
+    var connectionString = provider.GetRequiredService<IConfiguration>()["DbConnectionString"]
+                           ?? throw new InvalidOperationException("DB connection string is not set.");
+
+    var dbBuilder = new NpgsqlDataSourceBuilder(connectionString);
+    return dbBuilder.Build();
+});
+
 var app = builder.Build();
+
+using var cts = new CancellationTokenSource();
 
 app.ConfigureTyrApplication(config);
 
-var rawRepo = new RawDataRepository(app.Configuration["DbConnectionString"] ?? throw new InvalidOperationException("DB connection string is not set."));
-var retriever = new SmartDataRetriever(rawRepo);
+var retriever = app.Services.GetRequiredService<SmartDataRetriever>();
 retriever.RegisterTeam("KECATS");
 retriever.RegisterTeam("SSH");
-var task = retriever.RunAsync();
+var task = retriever.RunAsync(cts.Token);
+
+var processor = app.Services.GetRequiredService<DataProcessor>();
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 app.MapGet("/api/statistics/{team}", async (string team) =>
 {
+    var sw = new Stopwatch();
+    sw.Start();
     team = team.ToUpperInvariant();
-    var processor = new DataProcessor(app.Configuration["DbConnectionString"] ?? throw new InvalidOperationException("DB connection string is not set."));
     var processed = new List<PlayerInfo>();
     await foreach (var item in processor.GetAllEntriesAsync(team))
     {
@@ -73,6 +95,8 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
         periodStatses.Add(periodStats);
     }
 
+    sw.Stop();
+    logger.LogInformation("Gathered data for team {Team}, took {Seconds} seconds", team, sw.Elapsed.TotalSeconds);
     return periodStatses;
 });
 
