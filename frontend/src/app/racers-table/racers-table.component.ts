@@ -10,6 +10,7 @@ import {
 import { DecimalPipe } from '@angular/common';
 import { RacerDetail, RacerDetailsComponent } from '../racer-details/racer-details.component';
 import { DiffComponent } from '../diff/diff.component';
+import { config } from '../../config';
 
 @Component({
     selector: 'tnt-racers-table',
@@ -28,7 +29,7 @@ export class RacersTableComponent implements OnInit {
     });
 
     ngOnInit() {
-        fetch('https://api.tnt.typingrealm.com/api/statistics/kecats').then(data => {
+        fetch(`${config.apiUri}/api/statistics/kecats`).then(data => {
             data.json().then(data => {
                 this.data.set(data);
                 console.log(data);
