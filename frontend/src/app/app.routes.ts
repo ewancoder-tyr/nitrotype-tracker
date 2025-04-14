@@ -1,4 +1,4 @@
 import { Routes } from '@angular/router';
-import { RacersTableComponent } from './racers-table/racers-table.component';
+import { TeamPageComponent } from './team-page/team-page.component';
 
-export const routes: Routes = [{ path: '', component: RacersTableComponent }];
+export const routes: Routes = [{ path: '', component: TeamPageComponent }];

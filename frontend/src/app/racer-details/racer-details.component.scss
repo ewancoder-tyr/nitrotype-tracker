@@ -1,5 +1,25 @@
 :host {
   &.magic {
-    color: red;
+    color: #56ff27;
+  }
+
+  &.rare {
+    color: #3ea7fa;
+  }
+
+  &.unique {
+    color: #fbf743;
+  }
+
+  &.epic {
+    color: #ff7c19;
+  }
+
+  &.awesome {
+    color: #ff27fc;
+  }
+
+  &.best {
+    color: #ff2121;
   }
 }

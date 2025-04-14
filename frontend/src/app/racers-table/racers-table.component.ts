@@ -9,10 +9,11 @@ import {
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RacerDetail, RacerDetailsComponent } from '../racer-details/racer-details.component';
+import { DiffComponent } from '../diff/diff.component';
 
 @Component({
     selector: 'tnt-racers-table',
-    imports: [DecimalPipe, RacerDetailsComponent],
+    imports: [DecimalPipe, RacerDetailsComponent, DiffComponent],
     templateUrl: './racers-table.component.html',
     styleUrl: './racers-table.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush

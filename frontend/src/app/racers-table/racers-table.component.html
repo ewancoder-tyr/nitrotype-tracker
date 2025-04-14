@@ -17,9 +17,17 @@
           <tnt-racer-name [racer]="racer" [detail]="RacerDetail.Name"></tnt-racer-name>
         </td>
         <td>
-          {{ racer.accuracy | number: '.4' }}
+          <div class="cell-with-diff">
+            {{ racer.accuracy | number: '.4' }}
+            <tnt-diff [value]="racer.accuracyDiff"></tnt-diff>
+          </div>
         </td>
-        <td>{{ racer.averageSpeed | number: '.4' }}</td>
+        <td>
+          <div class="cell-with-diff">
+            {{ racer.averageSpeed | number: '.4' }}
+            <tnt-diff [value]="racer.averageSpeedDiff"></tnt-diff>
+          </div>
+        </td>
         <td>{{ racer.averageTextLength | number: '.2' }}</td>
         <td>{{ racer.typed }} ({{ racer.errors }})</td>
         <td>
