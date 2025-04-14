@@ -72,6 +72,7 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
         }
         catch
         {
+            //TODO: Log this.
             continue;
         }
     }
