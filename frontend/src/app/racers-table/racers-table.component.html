@@ -1,0 +1,32 @@
+<table>
+  <thead>
+    <tr>
+      <th>Cat name</th>
+      <th>Accuracy</th>
+      <th>Speed</th>
+      <th>Text length</th>
+      <th>Characters typed (errors)</th>
+      <th>Races</th>
+      <th>Time spent</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (racer of sorted(); track racer.username) {
+      <tr>
+        <td>
+          <tnt-racer-name [racer]="racer" [detail]="RacerDetail.Name"></tnt-racer-name>
+        </td>
+        <td>
+          {{ racer.accuracy | number: '.4' }}
+        </td>
+        <td>{{ racer.averageSpeed | number: '.4' }}</td>
+        <td>{{ racer.averageTextLength | number: '.2' }}</td>
+        <td>{{ racer.typed }} ({{ racer.errors }})</td>
+        <td>
+          <tnt-racer-name [racer]="racer" [detail]="RacerDetail.RacesPlayed"></tnt-racer-name>
+        </td>
+        <td>{{ racer.timeSpent }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
