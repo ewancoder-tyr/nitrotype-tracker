@@ -1,3 +1,3 @@
 # NitroType Tracker
 
-Statistics tracker for NitroType racing.
+Statistics tracker for NitroType racing. Initially made for KECATS team.
