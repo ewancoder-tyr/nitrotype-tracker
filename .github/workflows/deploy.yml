@@ -7,6 +7,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  API_IMAGE: nitrotype-tracker-api
+  API_DOCKERFILE: backend/NitroType.Tracker.Api/Dockerfile
+  WEB_UI_DOCKERFILE: frontend/Dockerfile
+  WEB_UI_IMAGE: nitrotype-tracker-web
 
 jobs:
   build-api:
@@ -31,22 +35,56 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/ewancoder/nitrotype-tracker-api
+          images: ${{ env.REGISTRY }}/ewancoder/${{ env.API_IMAGE }}
 
-      - name: Build and push API Docker image
+      - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
           push: true
           context: ./backend
-          file: backend/NitroType.Tracker.Api/Dockerfile
+          file: ${{ env.API_DOCKERFILE }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-web-ui:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/ewancoder/${{ env.WEB_UI_IMAGE }}
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: ./frontend
+          file: ${{ env.WEB_UI_DOCKERFILE }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: [build-api]
+    needs: [build-api, build-web-ui]
 
     permissions:
       contents: read
