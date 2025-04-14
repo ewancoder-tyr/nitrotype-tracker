@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'develop'
 
 env:
   REGISTRY: ghcr.io
@@ -89,6 +90,15 @@ jobs:
             echo "frontend=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Set CONFIG_FILE
+        id: set-config
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "CONFIG_FILE=config.production.ts" >> $GITHUB_ENV
+          else
+            echo "CONFIG_FILE=config.ts" >> $GITHUB_ENV
+          fi
+
       - name: Login to GitHub Container registry
         if: steps.filter-frontend.outputs.frontend == 'true'
         uses: docker/login-action@v3
@@ -114,6 +124,8 @@ jobs:
           file: ${{ env.WEB_UI_DOCKERFILE }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CONFIG_FILE=${{ env.CONFIG_FILE }}
 
   deploy:
     runs-on: ubuntu-latest

@@ -10,7 +10,8 @@ RUN pnpm install -g @angular/cli
 RUN pnpm install
 
 COPY . .
-#COPY src/config.production.ts src/config.ts
+ARG CONFIG_FILE
+RUN cp -f src/$CONFIG_FILE src/config.ts
 RUN pnpm run build
 
 FROM nginxinc/nginx-unprivileged:stable-alpine

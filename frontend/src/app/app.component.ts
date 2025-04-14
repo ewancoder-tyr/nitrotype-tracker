@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { config } from '../config';
 
 @Component({
     selector: 'tnt-root',
@@ -8,4 +9,8 @@ import { RouterOutlet } from '@angular/router';
     styleUrl: './app.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent {}
+export class AppComponent {
+    ngOnInit() {
+        console.log(`Configuration environment: ${config.environment}`);
+    }
+}
