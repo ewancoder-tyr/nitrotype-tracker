@@ -27,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 30
 
       - name: Check if backend files changed
         id: filter-backend
@@ -82,7 +82,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 30
 
       - name: Check if frontend files changed
         id: filter-frontend
