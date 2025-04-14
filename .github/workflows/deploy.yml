@@ -15,6 +15,8 @@ env:
 jobs:
   build-api:
     runs-on: ubuntu-latest
+    outputs:
+      backend_changed: ${{ steps.filter-backend.outputs.backend }}
 
     permissions:
       contents: read
@@ -23,8 +25,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if backend files changed
+        id: filter-backend
+        run: |
+          if git diff --name-only HEAD^ | grep -q '^backend/'; then
+            echo "Backend files changed"
+            echo "backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to GitHub Container registry
+        if: steps.filter-backend.outputs.backend == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -32,12 +47,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: steps.filter-backend.outputs.backend == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/ewancoder/${{ env.API_IMAGE }}
 
       - name: Build and push Docker image
+        if: steps.filter-backend.outputs.backend == 'true'
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -49,6 +66,8 @@ jobs:
 
   build-web-ui:
     runs-on: ubuntu-latest
+    outputs:
+      frontend_changed: ${{ steps.filter-frontend.outputs.frontend }}
 
     permissions:
       contents: read
@@ -57,8 +76,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if frontend files changed
+        id: filter-frontend
+        run: |
+          if git diff --name-only HEAD^ | grep -q '^frontend/'; then
+            echo "Frontend files changed"
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to GitHub Container registry
+        if: steps.filter-frontend.outputs.frontend == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -66,12 +98,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: steps.filter-frontend.outputs.frontend == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/ewancoder/${{ env.WEB_UI_IMAGE }}
 
       - name: Build and push Docker image
+        if: steps.filter-frontend.outputs.frontend == 'true'
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -83,8 +117,8 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     needs: [build-api, build-web-ui]
+    if: github.ref == 'refs/heads/main' && (needs.build-api.outputs.backend_changed == 'true' || needs.build-web-ui.outputs.frontend_changed == 'true')
 
     permissions:
       contents: read
