@@ -7,11 +7,14 @@ on:
       - 'develop'
 
 env:
-  REGISTRY: ghcr.io
+  PROJECT_NAME: nitrotype-tracker
   API_IMAGE: nitrotype-tracker-api
+  WEB_UI_IMAGE: nitrotype-tracker-web
   API_DOCKERFILE: backend/NitroType.Tracker.Api/Dockerfile
   WEB_UI_DOCKERFILE: frontend/Dockerfile
-  WEB_UI_IMAGE: nitrotype-tracker-web
+  REGISTRY: ghcr.io
+  REPO_USER: ewancoder
+  FETCH_DEPTH: 30
 
 jobs:
   build-api:
@@ -27,7 +30,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 30
+          fetch-depth: ${{ env.FETCH_DEPTH }}
 
       - name: Check if backend files changed
         id: filter-backend
@@ -38,6 +41,9 @@ jobs:
             echo "backend=true" >> $GITHUB_OUTPUT
           elif git diff --name-only $BEFORE_SHA HEAD | grep -q '^backend/'; then
             echo "Backend files changed"
+            echo "backend=true" >> $GITHUB_OUTPUT
+          elif [ $? -ne 0 ]; then
+            echo "Git diff failed, falling back to deployment."
             echo "backend=true" >> $GITHUB_OUTPUT
           else
             echo "backend=false" >> $GITHUB_OUTPUT
@@ -56,7 +62,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/ewancoder/${{ env.API_IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.API_IMAGE }}
 
       - name: Build and push Docker image
         if: steps.filter-backend.outputs.backend == 'true'
@@ -82,7 +88,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 30
+          fetch-depth: ${{ env.FETCH_DEPTH }}
 
       - name: Check if frontend files changed
         id: filter-frontend
@@ -93,6 +99,9 @@ jobs:
             echo "frontend=true" >> $GITHUB_OUTPUT
           elif git diff --name-only $BEFORE_SHA HEAD | grep -q '^frontend/'; then
             echo "Frontend files changed"
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          elif [ $? -ne 0 ]; then
+            echo "Git diff failed, falling back to deployment."
             echo "frontend=true" >> $GITHUB_OUTPUT
           else
             echo "frontend=false" >> $GITHUB_OUTPUT
@@ -120,7 +129,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/ewancoder/${{ env.WEB_UI_IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.WEB_UI_IMAGE }}
 
       - name: Build and push Docker image
         if: steps.filter-frontend.outputs.frontend == 'true'
