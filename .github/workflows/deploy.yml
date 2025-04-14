@@ -153,6 +153,30 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/main/docker-compose-production.yml > /tmp/nitrotype-tracker-docker-compose.yml
-            docker compose -f /tmp/nitrotype-tracker-docker-compose.yml pull
-            docker compose -f /tmp/nitrotype-tracker-docker-compose.yml up -d
+            mkdir -p /tmp/nitrotype-tracker
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/main/docker-compose-production.yml > /tmp/nitrotype-tracker/docker-compose.yml
+            docker compose -f /tmp/nitrotype-tracker/docker-compose.yml pull
+            docker compose -f /tmp/nitrotype-tracker/docker-compose.yml up -d
+
+  deploy-develop:
+    runs-on: ubuntu-latest
+    needs: [build-api, build-web-ui]
+    if: github.ref == 'refs/heads/develop' && (needs.build-api.outputs.backend_changed == 'true' || needs.build-web-ui.outputs.frontend_changed == 'true')
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Deploy to DO
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSWORD }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            mkdir -p /tmp/dev-nitrotype-tracker
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/docker-compose-development.yml > /tmp/dev-nitrotype-tracker/docker-compose.yml
+            docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml pull
+            docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml up -d
