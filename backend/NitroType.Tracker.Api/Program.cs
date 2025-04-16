@@ -77,8 +77,10 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
         }
     }
 
-    //var period = TimeSpan.FromDays(1);
-    var querySince = new DateTime(2025, 4, 10); // Start of the league season.
+    // Start of the league season.
+    var leagueStart = DateTime.UtcNow < new DateTime(2025, 4, 17)
+        ? new DateTime(2025, 4, 10)
+        : new DateTime(2025, 4, 17);
     var users = processed.GroupBy(x => x.Username).ToDictionary(x => x.Key, x => x.OrderBy(a => a.Timestamp).ToList());
 
     var periodStatses = new List<PlayerInfo>();
@@ -86,7 +88,7 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
     {
         var user = users[username];
         var now = user.LastOrDefault()!;
-        var previous = user.FirstOrDefault(x => x.Timestamp > querySince);
+        var previous = user.FirstOrDefault(x => x.Timestamp > leagueStart);
         var forDiff = user.FirstOrDefault(x => x.Timestamp <= DateTime.UtcNow - TimeSpan.FromDays(1))
             ?? user.FirstOrDefault();
         var periodStats = now - previous!;
