@@ -15,7 +15,7 @@ public sealed class DataProcessor
     {
         // TODO: Create the database/table if not created. Or use migrations.
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
-        var cmd = new NpgsqlCommand("SELECT data, timestamp FROM raw_data where team = @team;");
+        var cmd = new NpgsqlCommand("SELECT data, timestamp, id FROM raw_data where team = @team;");
         cmd.Connection = connection;
         cmd.Parameters.AddWithValue("@team", team);
 
@@ -26,11 +26,12 @@ public sealed class DataProcessor
             {
                 var json = reader.GetString(0);
                 var timestamp = reader.GetDateTime(1);
+                var id = reader.GetInt64(2);
 
                 var data = JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                            ?? throw new InvalidOperationException("Could not deserialize the json.");
 
-                yield return new(team, data, timestamp);
+                yield return new(team, data, timestamp, id);
             }
         }
         finally
@@ -41,7 +42,7 @@ public sealed class DataProcessor
     }
 }
 
-public sealed record RawTeamEntry(string Team, NitroTypeData Data, DateTime Timestamp);
+public sealed record RawTeamEntry(string Team, NitroTypeData Data, DateTime Timestamp, long Id);
 
 // Root object
 public record NitroTypeData(

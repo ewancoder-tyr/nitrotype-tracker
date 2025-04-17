@@ -31,6 +31,9 @@ builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
     return dbBuilder.Build();
 });
 
+builder.Services.AddSingleton<NormalizedDataRepository>();
+builder.Services.AddSingleton<DataNormalizer>();
+
 var app = builder.Build();
 
 using var cts = new CancellationTokenSource();
@@ -44,6 +47,14 @@ var task = retriever.RunAsync(cts.Token);
 
 var processor = app.Services.GetRequiredService<DataProcessor>();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+var normalizer = app.Services.GetRequiredService<DataNormalizer>();
+
+_ = Task.Run(async () =>
+{
+    await normalizer.ProcessTeamDataAsync("KECATS");
+    await Task.Delay(TimeSpan.FromHours(10));
+});
 
 app.MapGet("/api/statistics/{team}", async (string team) =>
 {
