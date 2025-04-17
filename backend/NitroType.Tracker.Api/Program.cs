@@ -11,7 +11,7 @@ isDebug = true;
 
 var config = TyrHostConfiguration.Default(
     builder.Configuration,
-    "FoulTalk",
+    "NitroType",
     isDebug: isDebug);
 
 await builder.ConfigureTyrApplicationBuilderAsync(config);
