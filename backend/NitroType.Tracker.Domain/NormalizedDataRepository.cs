@@ -56,22 +56,22 @@ public sealed class NormalizedDataRepository
         CREATE UNIQUE INDEX IF NOT EXISTS idx_normalized_data_username_timestamp 
             ON normalized_data(username, timestamp);";
 
-    try
-    {
-        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-        _logger.LogInformation("Database initialization completed successfully");
+        try
+        {
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            _logger.LogInformation("Database initialization completed successfully");
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to initialize database");
+            throw;
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
     }
-    catch (Exception e)
-    {
-        _logger.LogError(e, "Failed to initialize database");
-        throw;
-    }
-    finally
-    {
-        await cmd.DisposeAsync().ConfigureAwait(false);
-        await connection.DisposeAsync().ConfigureAwait(false);
-    }
-}
 
     public async ValueTask SaveAsync(NormalizedPlayerData data)
     {
@@ -111,45 +111,119 @@ public sealed class NormalizedDataRepository
         }
     }
 
-public async Task<long> GetLastProcessedIdAsync()
-{
-    var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
-    var cmd = connection.CreateCommand();
-    cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
-
-    try
+    public async Task<long> GetLastProcessedIdAsync()
     {
-        var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-        return (long)lastId;
-    }
-    finally
-    {
-        await cmd.DisposeAsync().ConfigureAwait(false);
-        await connection.DisposeAsync().ConfigureAwait(false);
-    }
-}
+        var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
 
-public async Task UpdateLastProcessedIdAsync(long newId)
-{
-    var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
-    var cmd = connection.CreateCommand();
-    cmd.CommandText = @"
+        try
+        {
+            var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+            return (long)lastId;
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    public async Task UpdateLastProcessedIdAsync(long newId)
+    {
+        var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
         UPDATE processing_state 
         SET last_processed_id = @newId, 
             last_updated = CURRENT_TIMESTAMP 
         WHERE id = 1;";
 
-    cmd.Parameters.AddWithValue("@newId", newId);
+        cmd.Parameters.AddWithValue("@newId", newId);
 
-    try
-    {
-        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-        _logger.LogDebug("Updated last processed ID to {NewId}", newId);
+        try
+        {
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            _logger.LogDebug("Updated last processed ID to {NewId}", newId);
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
     }
-    finally
+
+    public async Task<List<NormalizedPlayerData>> GetTeamStatsAsync(string team, DateTime startDate)
     {
-        await cmd.DisposeAsync().ConfigureAwait(false);
-        await connection.DisposeAsync().ConfigureAwait(false);
+        var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+        var cmd = connection.CreateCommand();
+
+        // Get both the latest stats and the starting point stats for each player
+        cmd.CommandText = @"
+        WITH LatestStats AS (
+            SELECT DISTINCT ON (username) 
+                username, team, typed, errors, name, races_played, timestamp, secs
+            FROM normalized_data
+            WHERE team = @team
+            ORDER BY username, timestamp DESC
+        ),
+        StartingStats AS (
+            SELECT DISTINCT ON (username) 
+                username, typed, errors, races_played, secs
+            FROM normalized_data
+            WHERE team = @team 
+                AND timestamp >= @startDate
+            ORDER BY username, timestamp ASC
+        )
+        SELECT 
+            l.username,
+            l.team,
+            COALESCE(l.typed - s.typed, l.typed) as typed,
+            COALESCE(l.errors - s.errors, l.errors) as errors,
+            l.name,
+            COALESCE(l.races_played - s.races_played, l.races_played) as races_played,
+            l.timestamp,
+            COALESCE(l.secs - s.secs, l.secs) as secs
+        FROM LatestStats l
+        LEFT JOIN StartingStats s ON l.username = s.username
+        ORDER BY typed DESC";
+
+        cmd.Parameters.AddWithValue("@team", team.ToUpperInvariant());
+        cmd.Parameters.AddWithValue("@startDate", startDate);
+
+        try
+        {
+            var results = new List<NormalizedPlayerData>();
+            var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+
+            try
+            {
+                while (await reader.ReadAsync().ConfigureAwait(false))
+                {
+                    results.Add(new NormalizedPlayerData
+                    {
+                        Username = reader.GetString(0),
+                        Team = reader.GetString(1),
+                        Typed = reader.GetInt64(2),
+                        Errors = reader.GetInt64(3),
+                        Name = reader.GetString(4),
+                        RacesPlayed = reader.GetInt32(5),
+                        Timestamp = reader.GetDateTime(6),
+                        Secs = reader.GetInt64(7)
+                    });
+                }
+
+                return results;
+            }
+            finally
+            {
+                await reader.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            await cmd.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
     }
-}
 }
