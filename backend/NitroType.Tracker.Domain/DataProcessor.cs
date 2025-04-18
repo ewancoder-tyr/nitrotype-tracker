@@ -5,19 +5,30 @@ namespace NitroType.Tracker.Domain;
 public sealed class DataProcessor
 {
     private readonly NpgsqlDataSource _dataSource;
+    private readonly NormalizedDataRepository _normalizedDataRepository;
 
-    public DataProcessor(NpgsqlDataSource dataSource)
+    public DataProcessor(
+        NpgsqlDataSource dataSource,
+        NormalizedDataRepository normalizedDataRepository)
     {
         _dataSource = dataSource;
+        _normalizedDataRepository = normalizedDataRepository;
     }
 
-    public async IAsyncEnumerable<RawTeamEntry> GetAllEntriesAsync(string team)
+    public async IAsyncEnumerable<RawTeamEntry> GetNewEntriesAsync(string? team = null)
     {
+        var lastProcessedId = await _normalizedDataRepository.GetLastProcessedIdAsync().ConfigureAwait(false);
+
         // TODO: Create the database/table if not created. Or use migrations.
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
-        var cmd = new NpgsqlCommand("SELECT data, timestamp, id FROM raw_data where team = @team;");
-        cmd.Connection = connection;
-        cmd.Parameters.AddWithValue("@team", team);
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = team is null
+            ? "SELECT data, timestamp, id, team FROM raw_data WHERE id > @lastId ORDER BY id;"
+            : "SELECT data, timestamp, id, team FROM raw_data where team = @team AND id > @lastId ORDER BY id;";
+
+        cmd.Parameters.AddWithValue("@lastId", lastProcessedId);
+        if (team is not null)
+            cmd.Parameters.AddWithValue("@team", team);
 
         try
         {
@@ -27,6 +38,7 @@ public sealed class DataProcessor
                 var json = reader.GetString(0);
                 var timestamp = reader.GetDateTime(1);
                 var id = reader.GetInt64(2);
+                team = reader.GetString(3);
 
                 var data = JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                            ?? throw new InvalidOperationException("Could not deserialize the json.");

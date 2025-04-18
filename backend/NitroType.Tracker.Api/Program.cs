@@ -52,7 +52,7 @@ var normalizer = app.Services.GetRequiredService<DataNormalizer>();
 
 _ = Task.Run(async () =>
 {
-    await normalizer.ProcessTeamDataAsync("KECATS");
+    await normalizer.ProcessTeamDataAsync();
     await Task.Delay(TimeSpan.FromHours(10));
 });
 
@@ -62,7 +62,7 @@ app.MapGet("/api/statistics/{team}", async (string team) =>
     sw.Start();
     team = team.ToUpperInvariant();
     var processed = new List<PlayerInfo>();
-    await foreach (var item in processor.GetAllEntriesAsync(team))
+    await foreach (var item in processor.GetNewEntriesAsync(team))
     {
         if (item.Data.Results is null || item.Data.Results.Season is null)
             continue;

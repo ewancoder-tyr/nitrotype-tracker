@@ -18,11 +18,11 @@ public sealed class DataNormalizer
         _logger = logger;
     }
 
-    public async Task ProcessTeamDataAsync(string team)
+    public async Task ProcessTeamDataAsync()
     {
-        _logger.LogInformation("Starting to process data for team {Team}", team);
+        _logger.LogInformation("Starting to process data");
 
-        await foreach (var item in _dataProcessor.GetAllEntriesAsync(team).ConfigureAwait(false))
+        await foreach (var item in _dataProcessor.GetNewEntriesAsync().ConfigureAwait(false))
         {
             if (item.Data.Results is null || item.Data.Results.Season is null)
             {
@@ -70,11 +70,14 @@ public sealed class DataNormalizer
                 }
             }
 
+            await _normalizedRepo.UpdateLastProcessedIdAsync(item.Id)
+                .ConfigureAwait(false);
+
             _logger.LogDebug(
                 "Finished processing data for team {Team} with id {Id}",
-                team, item.Id);
+                item.Team, item.Id);
         }
 
-        _logger.LogInformation("Completed processing data for team {Team}", team);
+        _logger.LogInformation("Completed processing available data");
     }
 }

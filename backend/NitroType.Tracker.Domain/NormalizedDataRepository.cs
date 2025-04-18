@@ -20,51 +20,62 @@ public sealed class NormalizedDataRepository
 
     private async Task InitializeDatabaseAsync()
     {
-        _logger.LogInformation("Initializing normalized data table if needed");
+        _logger.LogInformation("Initializing normalized data tables if needed");
 
         var connection = await _dataSource.OpenConnectionAsync()
             .ConfigureAwait(false);
 
         var cmd = connection.CreateCommand();
         cmd.CommandText = @"
-            CREATE TABLE IF NOT EXISTS ""normalized_data"" (
-                ""id"" BIGSERIAL PRIMARY KEY,
-                ""username"" VARCHAR(50) NOT NULL,
-                ""team"" VARCHAR(50) NOT NULL,
-                ""typed"" BIGINT NOT NULL,
-                ""errors"" BIGINT NOT NULL,
-                ""name"" VARCHAR(100) NOT NULL,
-                ""races_played"" INT NOT NULL,
-                ""timestamp"" TIMESTAMP NOT NULL,
-                ""secs"" BIGINT NOT NULL
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_normalized_data_team ON normalized_data(team);
-            CREATE INDEX IF NOT EXISTS idx_normalized_data_timestamp ON normalized_data(timestamp);
-            CREATE INDEX IF NOT EXISTS idx_normalized_data_username ON normalized_data(username);
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_normalized_data_username_timestamp 
-                ON normalized_data(username, timestamp);";
+        CREATE TABLE IF NOT EXISTS ""normalized_data"" (
+            ""id"" BIGSERIAL PRIMARY KEY,
+            ""username"" VARCHAR(50) NOT NULL,
+            ""team"" VARCHAR(50) NOT NULL,
+            ""typed"" BIGINT NOT NULL,
+            ""errors"" BIGINT NOT NULL,
+            ""name"" VARCHAR(100) NOT NULL,
+            ""races_played"" INT NOT NULL,
+            ""timestamp"" TIMESTAMP NOT NULL,
+            ""secs"" BIGINT NOT NULL
+        );
 
-        try
-        {
-            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-            _logger.LogInformation("Successfully initialized the normalized data table if was needed");
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Failed to initialize the normalized data table");
-            throw;
-        }
-        finally
-        {
-            await cmd.DisposeAsync().ConfigureAwait(false);
-            await connection.DisposeAsync().ConfigureAwait(false);
-        }
+        CREATE TABLE IF NOT EXISTS ""processing_state"" (
+            ""id"" INT PRIMARY KEY DEFAULT 1,  -- We'll only ever have one row
+            ""last_processed_id"" BIGINT NOT NULL DEFAULT 0,
+            ""last_updated"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        -- Insert initial record if doesn't exist
+        INSERT INTO ""processing_state"" (""id"", ""last_processed_id"")
+        VALUES (1, 0)
+        ON CONFLICT (id) DO NOTHING;
+
+        CREATE INDEX IF NOT EXISTS idx_normalized_data_team ON normalized_data(team);
+        CREATE INDEX IF NOT EXISTS idx_normalized_data_timestamp ON normalized_data(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_normalized_data_username ON normalized_data(username);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_normalized_data_username_timestamp 
+            ON normalized_data(username, timestamp);";
+
+    try
+    {
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        _logger.LogInformation("Database initialization completed successfully");
     }
+    catch (Exception e)
+    {
+        _logger.LogError(e, "Failed to initialize database");
+        throw;
+    }
+    finally
+    {
+        await cmd.DisposeAsync().ConfigureAwait(false);
+        await connection.DisposeAsync().ConfigureAwait(false);
+    }
+}
 
     public async ValueTask SaveAsync(NormalizedPlayerData data)
     {
-        _logger.LogDebug("Saving normalized data for user {Username} in team {Team}", data.Username, data.Team);
+        //_logger.LogTrace("Saving normalized data for user {Username} in team {Team}", data.Username, data.Team);
 
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
@@ -86,7 +97,7 @@ public sealed class NormalizedDataRepository
         try
         {
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-            _logger.LogDebug("Successfully saved normalized data for user {Username}", data.Username);
+            //_logger.LogTrace("Successfully saved normalized data for user {Username}", data.Username);
         }
         catch (Exception e)
         {
@@ -99,4 +110,46 @@ public sealed class NormalizedDataRepository
             await connection.DisposeAsync().ConfigureAwait(false);
         }
     }
+
+public async Task<long> GetLastProcessedIdAsync()
+{
+    var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+    var cmd = connection.CreateCommand();
+    cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
+
+    try
+    {
+        var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+        return (long)lastId;
+    }
+    finally
+    {
+        await cmd.DisposeAsync().ConfigureAwait(false);
+        await connection.DisposeAsync().ConfigureAwait(false);
+    }
+}
+
+public async Task UpdateLastProcessedIdAsync(long newId)
+{
+    var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
+    var cmd = connection.CreateCommand();
+    cmd.CommandText = @"
+        UPDATE processing_state 
+        SET last_processed_id = @newId, 
+            last_updated = CURRENT_TIMESTAMP 
+        WHERE id = 1;";
+
+    cmd.Parameters.AddWithValue("@newId", newId);
+
+    try
+    {
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        _logger.LogDebug("Updated last processed ID to {NewId}", newId);
+    }
+    finally
+    {
+        await cmd.DisposeAsync().ConfigureAwait(false);
+        await connection.DisposeAsync().ConfigureAwait(false);
+    }
+}
 }
