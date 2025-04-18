@@ -52,8 +52,11 @@ var normalizer = app.Services.GetRequiredService<DataNormalizer>();
 
 _ = Task.Run(async () =>
 {
-    await normalizer.ProcessTeamDataAsync();
-    await Task.Delay(TimeSpan.FromHours(10));
+    while (true)
+    {
+        await normalizer.ProcessTeamDataAsync();
+        await Task.Delay(TimeSpan.FromMinutes(2));
+    }
 });
 
 app.MapGet("/api/statistics/{team}", async (string team) =>
