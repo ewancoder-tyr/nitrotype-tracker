@@ -15,7 +15,7 @@ public sealed class RawDataRepository
         _dataSource = dataSource;
         _logger = logger;
 
-        _ = InitializeDatabaseAsync();
+        InitializeDatabaseAsync().GetAwaiter().GetResult();
     }
 
     private async Task InitializeDatabaseAsync()

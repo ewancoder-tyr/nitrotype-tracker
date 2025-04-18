@@ -31,6 +31,9 @@ builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
     return dbBuilder.Build();
 });
 
+builder.Services.AddSingleton<NormalizedDataRepository>();
+builder.Services.AddSingleton<DataNormalizer>();
+
 var app = builder.Build();
 
 using var cts = new CancellationTokenSource();
@@ -45,62 +48,48 @@ var task = retriever.RunAsync(cts.Token);
 var processor = app.Services.GetRequiredService<DataProcessor>();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-app.MapGet("/api/statistics/{team}", async (string team) =>
+var normalizer = app.Services.GetRequiredService<DataNormalizer>();
+
+_ = Task.Run(async () =>
+{
+    while (true)
+    {
+        await normalizer.ProcessTeamDataAsync();
+        await Task.Delay(TimeSpan.FromMinutes(2));
+    }
+});
+
+app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepository repository) =>
 {
     var sw = new Stopwatch();
     sw.Start();
-    team = team.ToUpperInvariant();
-    var processed = new List<PlayerInfo>();
-    await foreach (var item in processor.GetAllEntriesAsync(team))
-    {
-        if (item.Data.Results is null || item.Data.Results.Season is null)
-            continue;
 
-        try
-        {
-            processed.AddRange(item.Data.Results.Season.Select(s => new PlayerInfo
-            {
-                Username = s.Username!,
-                Team = item.Team,
-                Typed = s.Typed!.Value,
-                Errors = s.Errs!.Value,
-                Name = string.IsNullOrWhiteSpace(s.DisplayName) ? s.Username! : s.DisplayName,
-                RacesPlayed = s.RacesPlayed!.Value,
-                Timestamp = item.Timestamp,
-                Secs = s.Secs!.Value
-            }));
-        }
-        catch
-        {
-            //TODO: Log this.
-            continue;
-        }
-    }
-
-    // Start of the league season.
+    // Start of the league season
     var leagueStart = DateTime.UtcNow < new DateTime(2025, 4, 17)
         ? new DateTime(2025, 4, 10)
         : new DateTime(2025, 4, 17);
-    var users = processed.GroupBy(x => x.Username).ToDictionary(x => x.Key, x => x.OrderBy(a => a.Timestamp).ToList());
 
-    var periodStatses = new List<PlayerInfo>();
-    foreach (var username in users.Keys)
+    var stats = await repository.GetTeamStatsAsync(team, leagueStart);
+
+    // Convert to the expected PlayerInfo format
+    var result = stats.Select(s => new PlayerInfo
     {
-        var user = users[username];
-        var now = user.LastOrDefault()!;
-        var previous = user.FirstOrDefault(x => x.Timestamp > leagueStart);
-        var forDiff = user.FirstOrDefault(x => x.Timestamp <= DateTime.UtcNow - TimeSpan.FromDays(1))
-            ?? user.FirstOrDefault();
-        var periodStats = now - previous!;
-        periodStats.AccuracyDiff = now.Accuracy == 0 ? 0 : now.Accuracy - forDiff!.Accuracy;
-        periodStats.AverageSpeedDiff = now.AverageSpeed == 0 ? 0 : now.AverageSpeed - forDiff!.AverageSpeed;
-        periodStats.RacesPlayedDiff = now.RacesPlayed - forDiff!.RacesPlayed;
-        periodStatses.Add(periodStats);
-    }
+        Username = s.Username,
+        Team = s.Team,
+        Typed = s.Typed,
+        Errors = s.Errors,
+        Name = s.Name,
+        RacesPlayed = s.RacesPlayed,
+        Timestamp = s.Timestamp,
+        Secs = s.Secs,
+        AccuracyDiff = 0,
+        AverageSpeedDiff = 0,
+        RacesPlayedDiff = 0 // Temporarily disable diffs.
+    }).ToList();
 
     sw.Stop();
     logger.LogInformation("Gathered data for team {Team}, took {Seconds} seconds", team, sw.Elapsed.TotalSeconds);
-    return periodStatses;
+    return result;
 });
 
 await app.RunAsync();
