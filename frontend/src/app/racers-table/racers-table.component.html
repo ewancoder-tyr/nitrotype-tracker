@@ -32,6 +32,7 @@
         <td>{{ racer.typed }} ({{ racer.errors }})</td>
         <td>
           <tnt-racer-name [racer]="racer" [detail]="RacerDetail.RacesPlayed"></tnt-racer-name>
+          <tnt-diff [value]="racer.racesPlayedDiff"></tnt-diff>
         </td>
         <td>{{ racer.timeSpent }}</td>
       </tr>

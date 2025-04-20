@@ -158,7 +158,6 @@ public sealed class NormalizedDataRepository
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
 
-        // Get both the latest stats and the starting point stats for each player
         cmd.CommandText = @"
         WITH LatestStats AS (
             SELECT DISTINCT ON (username) 
@@ -174,6 +173,14 @@ public sealed class NormalizedDataRepository
             WHERE team = @team 
                 AND timestamp >= @startDate
             ORDER BY username, timestamp ASC
+        ),
+        DayAgoStats AS (
+            SELECT DISTINCT ON (username) 
+                username, races_played as races_played_day_ago
+            FROM normalized_data 
+            WHERE team = @team 
+                AND timestamp >= NOW() - INTERVAL '24 hours'
+            ORDER BY username, timestamp ASC
         )
         SELECT 
             l.username,
@@ -183,9 +190,11 @@ public sealed class NormalizedDataRepository
             l.name,
             COALESCE(l.races_played - s.races_played, l.races_played) as races_played,
             l.timestamp,
-            COALESCE(l.secs - s.secs, l.secs) as secs
+            COALESCE(l.secs - s.secs, l.secs) as secs,
+            COALESCE(l.races_played - d.races_played_day_ago, 0) as races_played_diff
         FROM LatestStats l
         LEFT JOIN StartingStats s ON l.username = s.username
+        LEFT JOIN DayAgoStats d ON l.username = d.username
         ORDER BY typed DESC";
 
         cmd.Parameters.AddWithValue("@team", team.ToUpperInvariant());
@@ -209,7 +218,8 @@ public sealed class NormalizedDataRepository
                         Name = reader.GetString(4),
                         RacesPlayed = reader.GetInt32(5),
                         Timestamp = reader.GetDateTime(6),
-                        Secs = reader.GetInt64(7)
+                        Secs = reader.GetInt64(7),
+                        RacesPlayedDiff = reader.GetInt32(8)
                     });
                 }
 

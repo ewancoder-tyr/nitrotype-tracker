@@ -11,6 +11,7 @@ public sealed class NormalizedPlayerData
     public required int RacesPlayed { get; set; }
     public required DateTime Timestamp { get; set; }
     public required long Secs { get; set; }
+    public int RacesPlayedDiff { get; set; }
 
     public decimal Accuracy => Typed == 0 ? 0 : 100m * (Typed - Errors) / Typed;
     public decimal AverageTextLength => RacesPlayed == 0 ? 0 : (decimal)Typed / RacesPlayed;

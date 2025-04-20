@@ -83,8 +83,8 @@ app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepositor
         Timestamp = s.Timestamp,
         Secs = s.Secs,
         AccuracyDiff = 0,
-        AverageSpeedDiff = 0,
-        RacesPlayedDiff = 0 // Temporarily disable diffs.
+        AverageSpeedDiff = 0, // Temporarily disable diffs.
+        RacesPlayedDiff = s.RacesPlayedDiff
     }).ToList();
 
     sw.Stop();
