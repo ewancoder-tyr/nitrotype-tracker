@@ -38,6 +38,7 @@ jobs:
         id: filter
         run: |
           BEFORE_SHA="${{ github.event.before }}"
+          echo "Checking files"
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
             echo "First time push"
             echo "frontend=true" >> $GITHUB_OUTPUT
@@ -265,7 +266,9 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             mkdir -p /tmp/nitrotype-tracker
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/main/docker-compose-production.yml > /tmp/nitrotype-tracker/docker-compose.yml
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/main/docker-compose.yml > /tmp/nitrotype-tracker/docker-compose.yml
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/.env.prod > /tmp/nitrotype-tracker/.env
+            sed -i '/ports:/{N;d}' /tmp/nitrotype-tracker/docker-compose.yml
             docker compose -f /tmp/nitrotype-tracker/docker-compose.yml pull
             docker compose -f /tmp/nitrotype-tracker/docker-compose.yml up -d
 
@@ -288,6 +291,7 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             mkdir -p /tmp/dev-nitrotype-tracker
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/docker-compose-development.yml > /tmp/dev-nitrotype-tracker/docker-compose.yml
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/docker-compose.yml > /tmp/dev-nitrotype-tracker/docker-compose.yml
+            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/.env.dev > /tmp/dev-nitrotype-tracker/.env
             docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml pull
             docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml up -d

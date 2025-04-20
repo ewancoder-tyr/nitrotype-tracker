@@ -1,0 +1,39 @@
+version: "3.8"
+
+networks:
+  default:
+    name: typingrealm
+    external: true
+
+services:
+  api:
+    image: ghcr.io/ewancoder/nitrotype-tracker-api:${TAG}
+    container_name: ${PREFIX}nitrotype-tracker-api
+    volumes:
+      - /data/${VOLUME_ROOT}/dataprotection:/app/dataprotection
+      - /root/dp.pfx:/app/dp.pfx
+    restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 750m
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+
+  postgres:
+    image: postgres:17
+    container_name: ${PREFIX}nitrotype-tracker-postgres
+    volumes:
+      - /data/${VOLUME_ROOT}/postgres:/var/lib/postgresql/data
+    ports:
+      - ${POSTGRES_PORT}
+    restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 750m
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+
+  web:
+    image: ghcr.io/ewancoder/nitrotype-tracker-web:${TAG}
+    container_name: ${PREFIX}nitrotype-tracker-web
+    restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 750m
