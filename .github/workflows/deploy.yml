@@ -94,11 +94,15 @@ jobs:
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
             echo "First time push"
             echo "backend=true" >> $GITHUB_OUTPUT
-          elif git diff --name-only $BEFORE_SHA HEAD | grep -q '^backend/'; then
-            echo "Backend files changed"
-            echo "backend=true" >> $GITHUB_OUTPUT
-          elif [ $? -ne 0 ]; then
+            return 0
+          fi
+          if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
             echo "Git diff failed, falling back to deployment."
+            echo "backend=true" >> $GITHUB_OUTPUT
+            return 0
+          fi
+          if grep -q '^backend/' diff; then
+            echo "Backend files changed"
             echo "backend=true" >> $GITHUB_OUTPUT
           else
             echo "backend=false" >> $GITHUB_OUTPUT
@@ -200,11 +204,15 @@ jobs:
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
             echo "First time push"
             echo "frontend=true" >> $GITHUB_OUTPUT
-          elif git diff --name-only $BEFORE_SHA HEAD | grep -q '^frontend/'; then
-            echo "Frontend files changed"
-            echo "frontend=true" >> $GITHUB_OUTPUT
-          elif [ $? -ne 0 ]; then
+            return 0
+          fi
+          if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
             echo "Git diff failed, falling back to deployment."
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            return 0
+          fi
+          if grep -q '^frontend/' diff; then
+            echo "Frontend files changed"
             echo "frontend=true" >> $GITHUB_OUTPUT
           else
             echo "frontend=false" >> $GITHUB_OUTPUT
