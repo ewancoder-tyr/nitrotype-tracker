@@ -251,7 +251,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-api, build-web-ui]
     if: |
-      always() &&
+      always() && !cancelled() &&
       github.ref == 'refs/heads/main' &&
       (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
 
@@ -279,7 +279,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-api, build-web-ui]
     if: |
-      always() &&
+      always() && !cancelled() &&
       github.ref == 'refs/heads/develop' &&
       (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
 
