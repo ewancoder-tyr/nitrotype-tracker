@@ -4,6 +4,7 @@
 ![activity](https://img.shields.io/github/commit-activity/m/ewancoder/nitrotype-tracker)
 
 Statistics tracker for NitroType racing. Initially made for KECATS team.
+Shows league / season racing statistics.
 
 ## Production status
 
