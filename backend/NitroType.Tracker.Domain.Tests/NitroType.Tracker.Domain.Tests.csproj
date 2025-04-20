@@ -1,0 +1,5 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\NitroType.Tracker.Domain\NitroType.Tracker.Domain.csproj" />
+  </ItemGroup>
+</Project>

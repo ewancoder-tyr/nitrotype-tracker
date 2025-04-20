@@ -14,5 +14,5 @@ public sealed class NormalizedPlayerData
 
     public decimal Accuracy => Typed == 0 ? 0 : 100m * (Typed - Errors) / Typed;
     public decimal AverageTextLength => RacesPlayed == 0 ? 0 : (decimal)Typed / RacesPlayed;
-    public decimal AverageSpeed => Secs == 0 ? 0 : (60m / 5) * Typed / Secs;
+    public decimal AverageSpeed => Secs == 0 ? 0 : Typed * 60m / (5 * Secs);
 }

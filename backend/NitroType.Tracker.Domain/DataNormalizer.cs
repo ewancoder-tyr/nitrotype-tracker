@@ -2,6 +2,41 @@ using Microsoft.Extensions.Logging;
 
 namespace NitroType.Tracker.Domain;
 
+public static class DataNormalizationConverter
+{
+    public static NormalizedPlayerData Convert(SeasonMember seasonMember, string team, DateTime timestamp)
+    {
+        if (seasonMember.Username is null)
+            throw new ArgumentException("Username is null.");
+
+        if (seasonMember.Typed is null)
+            throw new ArgumentException("Typed is null.");
+
+        if (seasonMember.Errs is null)
+            throw new ArgumentException("Errs is null.");
+
+        if (seasonMember.RacesPlayed is null)
+            throw new ArgumentException("RacesPlayed is null.");
+
+        if (seasonMember.Secs is null)
+            throw new ArgumentException("Secs is null.");
+
+        return new NormalizedPlayerData
+        {
+            Username = seasonMember.Username,
+            Team = team,
+            Typed = seasonMember.Typed.Value,
+            Errors = seasonMember.Errs.Value,
+            Name = string.IsNullOrWhiteSpace(seasonMember.DisplayName)
+                ? seasonMember.Username
+                : seasonMember.DisplayName,
+            RacesPlayed = seasonMember.RacesPlayed.Value,
+            Timestamp = timestamp,
+            Secs = seasonMember.Secs.Value
+        };
+    }
+}
+
 public sealed class DataNormalizer
 {
     private readonly DataProcessor _dataProcessor;
@@ -44,19 +79,7 @@ public sealed class DataNormalizer
                         continue;
                     }
 
-                    var normalizedData = new NormalizedPlayerData
-                    {
-                        Username = seasonData.Username,
-                        Team = item.Team,
-                        Typed = seasonData.Typed.Value,
-                        Errors = seasonData.Errs.Value,
-                        Name = string.IsNullOrWhiteSpace(seasonData.DisplayName)
-                            ? seasonData.Username
-                            : seasonData.DisplayName,
-                        RacesPlayed = seasonData.RacesPlayed.Value,
-                        Timestamp = item.Timestamp,
-                        Secs = seasonData.Secs.Value
-                    };
+                    var normalizedData = DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp);
 
                     await _normalizedRepo.SaveAsync(normalizedData)
                         .ConfigureAwait(false);
