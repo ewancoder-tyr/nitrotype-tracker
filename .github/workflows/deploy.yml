@@ -18,8 +18,51 @@ env:
   DOTNET_VERSION: '9.0.x'
 
 jobs:
+  check-changed-files:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_changed: ${{ steps.filter.outputs.frontend }}
+      backend_changed: ${{ steps.filter.outputs.backend }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Check if files changed
+        id: filter
+        run: |
+          BEFORE_SHA="${{ github.event.before }}"
+          if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
+            echo "First time push"
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "backend=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
+            echo "Git diff failed, falling back to deployment."
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "backend=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if grep -q '^frontend/' diff; then
+            echo "Frontend files changed"
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          fi
+          if grep -q '^backend/' diff; then
+            echo "Backend files changed"
+            echo "backend=true" >> $GITHUB_OUTPUT
+          fi
+
   test-api:
     runs-on: ubuntu-latest
+    if: needs.check-changed-files.outputs.backend_changed == 'true'
+    needs: check-changed-files
 
     steps:
       - name: Checkout repository
@@ -73,9 +116,8 @@ jobs:
 
   build-api:
     runs-on: ubuntu-latest
+    if: needs.check-changed-files.outputs.backend_changed == 'true'
     needs: test-api
-    outputs:
-      backend_changed: ${{ steps.filter-backend.outputs.backend }}
 
     permissions:
       contents: read
@@ -87,29 +129,7 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
-      - name: Check if backend files changed
-        id: filter-backend
-        run: |
-          BEFORE_SHA="${{ github.event.before }}"
-          if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
-            echo "First time push"
-            echo "backend=true" >> $GITHUB_OUTPUT
-            return 0
-          fi
-          if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
-            echo "Git diff failed, falling back to deployment."
-            echo "backend=true" >> $GITHUB_OUTPUT
-            return 0
-          fi
-          if grep -q '^backend/' diff; then
-            echo "Backend files changed"
-            echo "backend=true" >> $GITHUB_OUTPUT
-          else
-            echo "backend=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Login to GitHub Container registry
-        if: steps.filter-backend.outputs.backend == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -117,14 +137,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
-        if: steps.filter-backend.outputs.backend == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.API_IMAGE }}
 
       - name: Build and push Docker image
-        if: steps.filter-backend.outputs.backend == 'true'
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -136,6 +154,8 @@ jobs:
 
   test-web-ui:
     runs-on: ubuntu-latest
+    if: needs.check-changed-files.outputs.frontend_changed == 'true'
+    needs: check-changed-files
 
     steps:
       - name: Checkout Repository
@@ -183,9 +203,8 @@ jobs:
 
   build-web-ui:
     runs-on: ubuntu-latest
+    if: needs.check-changed-files.outputs.frontend_changed == 'true'
     needs: test-web-ui
-    outputs:
-      frontend_changed: ${{ steps.filter-frontend.outputs.frontend }}
 
     permissions:
       contents: read
@@ -197,27 +216,6 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
-      - name: Check if frontend files changed
-        id: filter-frontend
-        run: |
-          BEFORE_SHA="${{ github.event.before }}"
-          if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
-            echo "First time push"
-            echo "frontend=true" >> $GITHUB_OUTPUT
-            return 0
-          fi
-          if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
-            echo "Git diff failed, falling back to deployment."
-            echo "frontend=true" >> $GITHUB_OUTPUT
-            return 0
-          fi
-          if grep -q '^frontend/' diff; then
-            echo "Frontend files changed"
-            echo "frontend=true" >> $GITHUB_OUTPUT
-          else
-            echo "frontend=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Set CONFIG_FILE
         id: set-config
         run: |
@@ -228,7 +226,6 @@ jobs:
           fi
 
       - name: Login to GitHub Container registry
-        if: steps.filter-frontend.outputs.frontend == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -236,14 +233,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
-        if: steps.filter-frontend.outputs.frontend == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.WEB_UI_IMAGE }}
 
       - name: Build and push Docker image
-        if: steps.filter-frontend.outputs.frontend == 'true'
         id: push
         uses: docker/build-push-action@v6
         with:
