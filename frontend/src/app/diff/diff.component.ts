@@ -9,6 +9,7 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular
 })
 export class DiffComponent {
     @Input({ required: true }) value!: number;
+    @Input() decimalDigits = 4;
 
     @HostBinding('class')
     get getClass() {
@@ -20,7 +21,7 @@ export class DiffComponent {
     getValue() {
         if (this.value === 0) return '';
 
-        const value = Math.abs(this.value).toFixed(4);
+        const value = Math.abs(this.value).toFixed(this.decimalDigits);
 
         return this.value < 0 ? `\u25bc ${value}` : `\u25b2 ${value}`;
     }

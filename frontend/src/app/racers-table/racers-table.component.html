@@ -31,8 +31,10 @@
         <td>{{ racer.averageTextLength | number: '.2' }}</td>
         <td>{{ racer.typed }} ({{ racer.errors }})</td>
         <td>
-          <tnt-racer-name [racer]="racer" [detail]="RacerDetail.RacesPlayed"></tnt-racer-name>
-          <tnt-diff [value]="racer.racesPlayedDiff"></tnt-diff>
+          <div class="cell-with-diff">
+            <tnt-racer-name [racer]="racer" [detail]="RacerDetail.RacesPlayed"></tnt-racer-name>
+            <tnt-diff [value]="racer.racesPlayedDiff" [decimalDigits]="0"></tnt-diff>
+          </div>
         </td>
         <td>{{ racer.timeSpent }}</td>
       </tr>
