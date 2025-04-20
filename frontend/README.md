@@ -17,3 +17,4 @@ Tracker for NitroType teams statistics.
 - Create Dockerfile, update Compose file (read backend/README for ci/compose instructions)
   - Including Nginx config file
 - Copy/install shared Framework files? (auth module / http)
+- (later) ng generate config karma (or use this template) and install karma-sabarivka-reporter
