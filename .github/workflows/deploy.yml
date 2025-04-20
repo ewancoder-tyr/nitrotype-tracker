@@ -249,7 +249,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build-api, build-web-ui]
-    if: github.ref == 'refs/heads/main' && (needs.build-api.outputs.backend_changed == 'true' || needs.build-web-ui.outputs.frontend_changed == 'true')
+    if: github.ref == 'refs/heads/main' && (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
 
     permissions:
       contents: read
@@ -272,7 +272,7 @@ jobs:
   deploy-develop:
     runs-on: ubuntu-latest
     needs: [build-api, build-web-ui]
-    if: github.ref == 'refs/heads/develop' && (needs.build-api.outputs.backend_changed == 'true' || needs.build-web-ui.outputs.frontend_changed == 'true')
+    if: github.ref == 'refs/heads/develop' && (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
 
     permissions:
       contents: read
