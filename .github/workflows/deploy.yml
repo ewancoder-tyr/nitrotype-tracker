@@ -23,6 +23,7 @@ jobs:
     outputs:
       frontend_changed: ${{ steps.filter.outputs.frontend }}
       backend_changed: ${{ steps.filter.outputs.backend }}
+      db_changed: ${{ steps.filter.outputs.db }}
 
     permissions:
       contents: read
@@ -43,12 +44,14 @@ jobs:
             echo "First time push"
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
+            echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
             echo "Git diff failed, falling back to deployment."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
+            echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if grep -q '^frontend/' diff; then
@@ -58,6 +61,10 @@ jobs:
           if grep -q '^backend/' diff; then
             echo "Backend files changed"
             echo "backend=true" >> $GITHUB_OUTPUT
+          fi
+          if grep -q '^db/' diff; then
+            echo "DB files changed"
+            echo "db=true" >> $GITHUB_OUTPUT
           fi
 
   test-api:
@@ -281,12 +288,29 @@ jobs:
     if: |
       always() && !cancelled() &&
       github.ref == 'refs/heads/develop' &&
-      (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
+      (
+        needs.check-changed-files.outputs.backend_changed == 'true' ||
+        needs.check-changed-files.outputs.frontend_changed == 'true' ||
+        needs.check-changed-files.outputs.db_changed == 'true')
 
     permissions:
       contents: read
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSWORD }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          source: "db,docker-compose.yml,.env.dev"
+          target: "/tmp/dev-nitrotype-tracker"
+
       - name: Deploy to DO
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -296,8 +320,19 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            mkdir -p /tmp/dev-nitrotype-tracker
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/docker-compose.yml > /tmp/dev-nitrotype-tracker/docker-compose.yml
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/.env.dev > /tmp/dev-nitrotype-tracker/.env
-            docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml pull
-            docker compose -f /tmp/dev-nitrotype-tracker/docker-compose.yml up -d
+            cd /tmp/dev-nitrotype-tracker
+            mv .env.dev .env
+            docker compose pull
+            docker compose up -d postgres
+            docker stop dev-nitrotype-tracker-api
+            docker run --rm \
+              --network typingrealm \
+              -v /tmp/dev-nitrotype-tracker/db/migrations:/db/migrations \
+              --env-file /data/dev-nitrotype-tracker/secrets.env \
+              amacneil/dbmate:latest --wait up
+            if [ $? -ne 0 ]; then
+              echo "Migration failed, restarting old API container"
+              docker start dev-nitrotype-tracker-api
+              exit 1
+            fi
+            docker compose up -d
