@@ -260,27 +260,62 @@ jobs:
     if: |
       always() && !cancelled() &&
       github.ref == 'refs/heads/main' &&
-      (needs.check-changed-files.outputs.backend_changed == 'true' || needs.check-changed-files.outputs.frontend_changed == 'true')
+      (
+        needs.check-changed-files.outputs.backend_changed == 'true' ||
+        needs.check-changed-files.outputs.frontend_changed == 'true' ||
+        needs.check-changed-files.outputs.db_changed == 'true'
+      )
 
     permissions:
       contents: read
 
     steps:
-      - name: Deploy to DO
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
+          source: "db,docker-compose.yml,.env.prod"
+          target: "/tmp/nitrotype-tracker"
+
+      - name: Deploy to DO
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSWORD }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          envs: DB_CHANGED
           script: |
-            mkdir -p /tmp/nitrotype-tracker
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/main/docker-compose.yml > /tmp/nitrotype-tracker/docker-compose.yml
-            curl https://raw.githubusercontent.com/ewancoder/nitrotype-tracker/develop/.env.prod > /tmp/nitrotype-tracker/.env
-            sed -i '/ports:/{N;d}' /tmp/nitrotype-tracker/docker-compose.yml
-            docker compose -f /tmp/nitrotype-tracker/docker-compose.yml pull
-            docker compose -f /tmp/nitrotype-tracker/docker-compose.yml up -d
+            cd /tmp/nitrotype-tracker
+            mv .env.prod .env
+            sed -i '/ports:/{N;d}' docker-compose.yml
+            docker compose pull
+            docker compose up -d postgres
+            if [ "$DB_CHANGED" == "true" ]; then
+              echo "Database has changed, deploying it."
+              docker stop nitrotype-tracker-api
+              docker run --rm \
+                --network typingrealm \
+                -v /tmp/nitrotype-tracker/db/migrations:/db/migrations \
+                --env-file /data/nitrotype-tracker/secrets.env \
+                amacneil/dbmate:latest --wait up
+              if [ $? -ne 0 ]; then
+                echo "Migration failed, restarting old API container"
+                docker start nitrotype-tracker-api
+                exit 1
+              fi
+            fi
+            docker compose up -d
 
   deploy-develop:
     runs-on: ubuntu-latest
@@ -291,7 +326,8 @@ jobs:
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
         needs.check-changed-files.outputs.frontend_changed == 'true' ||
-        needs.check-changed-files.outputs.db_changed == 'true')
+        needs.check-changed-files.outputs.db_changed == 'true'
+      )
 
     permissions:
       contents: read
