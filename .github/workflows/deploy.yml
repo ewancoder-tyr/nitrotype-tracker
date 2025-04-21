@@ -69,8 +69,8 @@ jobs:
 
   test-api:
     runs-on: ubuntu-latest
-    if: needs.check-changed-files.outputs.backend_changed == 'true'
     needs: check-changed-files
+    if: needs.check-changed-files.outputs.backend_changed == 'true'
 
     steps:
       - name: Checkout repository
@@ -124,8 +124,8 @@ jobs:
 
   build-api:
     runs-on: ubuntu-latest
+    needs: [check-changed-files, test-api]
     if: needs.check-changed-files.outputs.backend_changed == 'true'
-    needs: test-api
 
     permissions:
       contents: read
@@ -160,8 +160,8 @@ jobs:
 
   test-web-ui:
     runs-on: ubuntu-latest
-    if: needs.check-changed-files.outputs.frontend_changed == 'true'
     needs: check-changed-files
+    if: needs.check-changed-files.outputs.frontend_changed == 'true'
 
     steps:
       - name: Checkout Repository
@@ -209,8 +209,8 @@ jobs:
 
   build-web-ui:
     runs-on: ubuntu-latest
+    needs: [check-changed-files, test-web-ui]
     if: needs.check-changed-files.outputs.frontend_changed == 'true'
-    needs: test-web-ui
 
     permissions:
       contents: read
@@ -256,7 +256,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-api, build-web-ui]
+    needs: [check-changed-files, build-api, build-web-ui]
     if: |
       always() && !cancelled() &&
       github.ref == 'refs/heads/main' &&
@@ -284,7 +284,7 @@ jobs:
 
   deploy-develop:
     runs-on: ubuntu-latest
-    needs: [build-api, build-web-ui]
+    needs: [check-changed-files, build-api, build-web-ui]
     if: |
       always() && !cancelled() &&
       github.ref == 'refs/heads/develop' &&
@@ -313,26 +313,32 @@ jobs:
 
       - name: Deploy to DO
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
+          envs: DB_CHANGED
           script: |
             cd /tmp/dev-nitrotype-tracker
             mv .env.dev .env
             docker compose pull
             docker compose up -d postgres
-            docker stop dev-nitrotype-tracker-api
-            docker run --rm \
-              --network typingrealm \
-              -v /tmp/dev-nitrotype-tracker/db/migrations:/db/migrations \
-              --env-file /data/dev-nitrotype-tracker/secrets.env \
-              amacneil/dbmate:latest --wait up
-            if [ $? -ne 0 ]; then
-              echo "Migration failed, restarting old API container"
-              docker start dev-nitrotype-tracker-api
-              exit 1
+            if [ "$DB_CHANGED" == "true" ]; then
+              echo "Database has changed, deploying it."
+              docker stop dev-nitrotype-tracker-api
+              docker run --rm \
+                --network typingrealm \
+                -v /tmp/dev-nitrotype-tracker/db/migrations:/db/migrations \
+                --env-file /data/dev-nitrotype-tracker/secrets.env \
+                amacneil/dbmate:latest --wait up
+              if [ $? -ne 0 ]; then
+                echo "Migration failed, restarting old API container"
+                docker start dev-nitrotype-tracker-api
+                exit 1
+              fi
             fi
             docker compose up -d
