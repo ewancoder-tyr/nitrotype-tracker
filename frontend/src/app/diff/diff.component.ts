@@ -12,13 +12,13 @@ export class DiffComponent {
     @Input() decimalDigits = 4;
 
     @HostBinding('class')
-    get getClass() {
+    protected get getClass() {
         if (this.value < 0) return 'bad';
 
         return 'good';
     }
 
-    getValue() {
+    protected getValue() {
         if (this.value === 0) return '';
 
         const value = Math.abs(this.value).toFixed(this.decimalDigits);
