@@ -5,6 +5,8 @@ on:
     branches:
       - 'main'
       - 'develop'
+    tags:
+      - 'v*'
 
 env:
   PROJECT_NAME: nitrotype-tracker
@@ -13,12 +15,14 @@ env:
   API_DOCKERFILE: backend/NitroType.Tracker.Api/Dockerfile
   WEB_DOCKERFILE: frontend/Dockerfile
   REGISTRY: ghcr.io
+  BADGE_GIST_ID: 0184962696ef0364be7a3f491133f2f9
   REPO_USER: ewancoder
   CHECK_FETCH_DEPTH: 30
   DOTNET_VERSION: '9.0.x'
 
 jobs:
   check-changed-files:
+    name: Check changed files
     runs-on: ubuntu-latest
     outputs:
       frontend_changed: ${{ steps.filter.outputs.frontend }}
@@ -27,7 +31,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -41,80 +44,86 @@ jobs:
           BEFORE_SHA="${{ github.event.before }}"
           echo "Checking files"
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
-            echo "First time push"
+            echo "First time push. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
-            echo "Git diff failed, falling back to deployment."
+            echo "Git diff failed, falling back to deployment. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if grep -q '^frontend/' diff; then
-            echo "Frontend files changed"
+            echo "Frontend files changed. Deploying frontend."
             echo "frontend=true" >> $GITHUB_OUTPUT
           fi
           if grep -q '^backend/' diff; then
-            echo "Backend files changed"
+            echo "Backend files changed. Deploying backend."
             echo "backend=true" >> $GITHUB_OUTPUT
           fi
           if grep -q '^db/' diff; then
-            echo "DB files changed"
+            echo "DB files changed. Deploying database."
             echo "db=true" >> $GITHUB_OUTPUT
           fi
 
   test-api:
+    name: Test API
     runs-on: ubuntu-latest
     needs: check-changed-files
     if: needs.check-changed-files.outputs.backend_changed == 'true'
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # TODO: Consider generating package.lock.json file and using cache for all setup-dotnet actions.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Test
-        run: dotnet test --logger trx --logger html --results-directory coverage --collect "XPlat Code Coverage" *.slnx
+      - name: Test solution
+        run: dotnet test --logger trx --logger html --results-directory tests --collect "XPlat Code Coverage" *.slnx
         working-directory: backend
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: '!cancelled()'
         with:
-          name: coverage
-          path: backend/coverage
+          name: api-test-results
+          path: backend/tests/
 
-      - name: Code coverage summary report
+      - name: Create coverage report
         uses: irongut/CodeCoverageSummary@v1.3.0
         if: '!cancelled()'
         with:
-          filename: 'backend/coverage/*/coverage.cobertura.xml'
+          filename: 'backend/tests/*/coverage.cobertura.xml'
           badge: true
           format: 'markdown'
           output: 'both'
           fail_below_min: true
           thresholds: '0 80'
 
-      - name: Write to Job Summary
+      - name: Write coverage report to job summary
         run: |
           cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
           echo COVERAGE=$(cat code-coverage-results.md | awk -F'|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
         if: '!cancelled()'
 
-      - name: Create Awesome Badge
+      # TODO: Consider adding icon/logo here.
+      - name: Create coverage badge
         uses: schneegans/dynamic-badges-action@v1.7.0
         if: '!cancelled()'
         with:
           auth: ${{ secrets.GIST_SECRET }}
-          gistID: 0184962696ef0364be7a3f491133f2f9
+          gistID: ${{ env.BADGE_GIST_ID }}
           filename: ${{ env.API_IMAGE }}-coverage-${{ github.ref_name }}.json
           label: API Coverage
           message: ${{ env.COVERAGE }}%
@@ -123,9 +132,13 @@ jobs:
           minColorRange: 0
 
   test-api-mutation:
+    name: API mutation testing
     runs-on: ubuntu-latest
-    needs: [ check-changed-files, test-api ]
+    needs: [check-changed-files, test-api]
     if: needs.check-changed-files.outputs.backend_changed == 'true'
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -139,17 +152,19 @@ jobs:
       - name: Install Stryker
         run: dotnet tool install -g dotnet-stryker
 
-      - name: Test mutation
+      - name: Mutation testing
         run: dotnet stryker -O stryker
         working-directory: backend
 
-      - name: Upload Stryker HTML Report
+      # TODO: Consider writing info to summary & badges.
+      - name: Upload mutation test results
         uses: actions/upload-artifact@v4
         with:
-          name: backend-mutation-report.html
+          name: api-mutation-test-results
           path: backend/stryker/reports/mutation-report.html
 
   build-api:
+    name: Build API
     runs-on: ubuntu-latest
     needs: [check-changed-files, test-api]
     if: needs.check-changed-files.outputs.backend_changed == 'true'
@@ -162,7 +177,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Login to GitHub Container registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -174,6 +189,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.API_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
 
       - name: Build and push Docker image
         id: push
@@ -226,7 +249,7 @@ jobs:
         if: '!cancelled()'
         with:
           auth: ${{ secrets.GIST_SECRET }}
-          gistID: 0184962696ef0364be7a3f491133f2f9
+          gistID: ${{ env.BADGE_GIST_ID }}
           filename: ${{ env.WEB_IMAGE }}-coverage-${{ github.ref_name }}.json
           label: WEB UI Coverage
           message: ${{ env.COVERAGE }}%
