@@ -82,7 +82,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Test
-        run: dotnet test --logger trx --logger html --results-directory coverage --collect "XPlat Code Coverage"
+        run: dotnet test --logger trx --logger html --results-directory coverage --collect "XPlat Code Coverage" *.slnx
         working-directory: backend
 
       - name: Upload test results
@@ -121,6 +121,33 @@ jobs:
           valColorRange: ${{ env.COVERAGE }}
           maxColorRange: 80
           minColorRange: 0
+
+  test-api-mutation:
+    runs-on: ubuntu-latest
+    needs: [ check-changed-files, test-api ]
+    if: needs.check-changed-files.outputs.backend_changed == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Stryker
+        run: dotnet tool install -g dotnet-stryker
+
+      - name: Test mutation
+        run: dotnet stryker -O stryker
+        working-directory: backend
+
+      - name: Upload Stryker HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-mutation-report.html
+          path: backend/stryker/reports/mutation-report.html
 
   build-api:
     runs-on: ubuntu-latest
