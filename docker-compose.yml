@@ -40,7 +40,7 @@ services:
       retries: 5
 
   web:
-    image: ghcr.io/ewancoder/nitrotype-tracker-web:${TAG}
+    image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}
     container_name: ${PREFIX}nitrotype-tracker-web
     restart: unless-stopped
     mem_limit: 1g
