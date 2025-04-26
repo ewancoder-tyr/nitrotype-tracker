@@ -137,8 +137,7 @@ jobs:
   test-api-mutation:
     name: API mutation testing
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-api]
-    if: needs.check-changed-files.outputs.backend_changed == 'true'
+    needs: [test-api]
 
     permissions:
       contents: read
@@ -169,8 +168,7 @@ jobs:
   build-api:
     name: Build API
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-api]
-    if: needs.check-changed-files.outputs.backend_changed == 'true'
+    needs: [test-api]
     outputs:
       sha: ${{ steps.save.outputs.sha }}
 
@@ -278,8 +276,7 @@ jobs:
   test-web-mutation:
     name: Web mutation testing
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-web]
-    if: needs.check-changed-files.outputs.frontend_changed == 'true'
+    needs: [test-web]
 
     permissions:
       contents: read
@@ -318,8 +315,7 @@ jobs:
   build-web:
     name: Build Web
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-web]
-    if: needs.check-changed-files.outputs.frontend_changed == 'true'
+    needs: [test-web]
     outputs:
       sha: ${{ steps.save.outputs.sha }}
 
@@ -450,7 +446,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check-changed-files, build-api, build-web]
     if: |
-      always() && !cancelled() &&
+      always() && !cancelled() && !failure() &&
       github.ref == 'refs/heads/develop' &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
