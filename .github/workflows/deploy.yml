@@ -458,6 +458,10 @@ jobs:
                 exit 1
               fi
             fi
+            if [ -z $API_SHA_TAG ]; then
+              echo "API is not being deployed, restarting old API container."
+              docker compose start api
+            fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
 
@@ -510,6 +514,7 @@ jobs:
             echo "DB_CHANGED: $DB_CHANGED"
             echo "API_SHA_TAG: $API_SHA_TAG"
             echo "WEB_SHA_TAG: $WEB_SHA_TAG"
+            echo "PROJECT_NAME: $PROJECT_NAME"
             cd /tmp/dev-$PROJECT_NAME
             mv .env.dev .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
@@ -538,6 +543,10 @@ jobs:
                 docker compose start api
                 exit 1
               fi
+            fi
+            if [ -z $API_SHA_TAG ]; then
+              echo "API is not being deployed, restarting old API container."
+              docker compose start api
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
