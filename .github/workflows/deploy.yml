@@ -382,8 +382,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check-changed-files, build-api, build-web]
     if: |
-      always() && !cancelled() &&
-      github.ref == 'refs/heads/main' &&
+      always() && !cancelled() && !failure() &&
+      (github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))) &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
         needs.check-changed-files.outputs.frontend_changed == 'true' ||
@@ -412,17 +412,33 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
+          API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          envs: DB_CHANGED
+          envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG
           script: |
+            echo "DB_CHANGED: $DB_CHANGED"
+            echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "WEB_SHA_TAG: $WEB_SHA_TAG"
             cd /tmp/nitrotype-tracker
             mv .env.prod .env
+            sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             sed -i '/ports:/{N;d}' docker-compose.yml
+            DEPLOY_SERVICES=$(docker compose config --services)
+            if [ -z $API_SHA_TAG ]; then
+              echo "API will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $WEB_SHA_TAG ]; then
+              echo "WEB will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^web$' | tr '\n' ' ')
+            fi
             docker compose pull
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
@@ -439,7 +455,8 @@ jobs:
                 exit 1
               fi
             fi
-            docker compose up -d
+            echo "Deploying the following services: $DEPLOY_SERVICES"
+            docker compose up -d $DEPLOY_SERVICES
 
   deploy-develop:
     name: Deploy development
