@@ -484,6 +484,15 @@ jobs:
             mv .env.dev .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
+            DEPLOY_SERVICES=$(docker compose config --services)
+            if [ -z $API_SHA_TAG ]; then
+              echo "API will not be deployed.
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $WEB_SHA_TAG ]; then
+              echo "WEB will not be deployed.
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^web$' | tr '\n' ' ')
+            fi
             docker compose pull
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
@@ -500,4 +509,5 @@ jobs:
                 exit 1
               fi
             fi
-            docker compose up -d
+            echo "Deploying the following services: $DEPLOY_SERVICES"
+            docker compose up -d $DEPLOY_SERVICES
