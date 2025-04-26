@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NitroType.Tracker.Api", "NitroType.Tracker.Api\NitroType.Tracker.Api.csproj", "{5F2D7F39-2110-B27B-D4FD-FC208949CD3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NitroType.Tracker.Domain.Tests", "NitroType.Tracker.Domain.Tests\NitroType.Tracker.Domain.Tests.csproj", "{5C39AE13-61A5-3889-A300-EB3B7CEED8D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NitroType.Tracker.Domain", "NitroType.Tracker.Domain\NitroType.Tracker.Domain.csproj", "{D281B960-746E-3E22-8731-E832079D2D9A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5F2D7F39-2110-B27B-D4FD-FC208949CD3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F2D7F39-2110-B27B-D4FD-FC208949CD3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F2D7F39-2110-B27B-D4FD-FC208949CD3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F2D7F39-2110-B27B-D4FD-FC208949CD3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C39AE13-61A5-3889-A300-EB3B7CEED8D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C39AE13-61A5-3889-A300-EB3B7CEED8D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C39AE13-61A5-3889-A300-EB3B7CEED8D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C39AE13-61A5-3889-A300-EB3B7CEED8D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D281B960-746E-3E22-8731-E832079D2D9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D281B960-746E-3E22-8731-E832079D2D9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D281B960-746E-3E22-8731-E832079D2D9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D281B960-746E-3E22-8731-E832079D2D9A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

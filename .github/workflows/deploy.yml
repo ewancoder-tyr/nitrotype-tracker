@@ -5,20 +5,24 @@ on:
     branches:
       - 'main'
       - 'develop'
+    tags:
+      - 'v*'
 
 env:
   PROJECT_NAME: nitrotype-tracker
   API_IMAGE: nitrotype-tracker-api
-  WEB_UI_IMAGE: nitrotype-tracker-web
+  WEB_IMAGE: nitrotype-tracker-web
   API_DOCKERFILE: backend/NitroType.Tracker.Api/Dockerfile
-  WEB_UI_DOCKERFILE: frontend/Dockerfile
+  WEB_DOCKERFILE: frontend/Dockerfile
   REGISTRY: ghcr.io
+  BADGE_GIST_ID: 0184962696ef0364be7a3f491133f2f9
   REPO_USER: ewancoder
   CHECK_FETCH_DEPTH: 30
   DOTNET_VERSION: '9.0.x'
 
 jobs:
   check-changed-files:
+    name: Check changed files
     runs-on: ubuntu-latest
     outputs:
       frontend_changed: ${{ steps.filter.outputs.frontend }}
@@ -27,7 +31,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -39,38 +42,105 @@ jobs:
         id: filter
         run: |
           BEFORE_SHA="${{ github.event.before }}"
-          echo "Checking files"
+          CURRENT_SHA=$(git rev-parse HEAD)
+          echo "Checking files:"
+          echo "BEFORE_SHA: $BEFORE_SHA"
+          echo "CURRENT_SHA: $CURRENT_SHA"
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
-            echo "First time push"
+            echo "First time push. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
-            echo "Git diff failed, falling back to deployment."
+            echo "Git diff failed, falling back to deployment. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if grep -q '^frontend/' diff; then
-            echo "Frontend files changed"
+            echo "Frontend files changed. Deploying frontend."
             echo "frontend=true" >> $GITHUB_OUTPUT
           fi
           if grep -q '^backend/' diff; then
-            echo "Backend files changed"
+            echo "Backend files changed. Deploying backend."
             echo "backend=true" >> $GITHUB_OUTPUT
           fi
           if grep -q '^db/' diff; then
-            echo "DB files changed"
+            echo "DB files changed. Deploying database."
             echo "db=true" >> $GITHUB_OUTPUT
           fi
 
   test-api:
+    name: Test API
     runs-on: ubuntu-latest
     needs: check-changed-files
     if: needs.check-changed-files.outputs.backend_changed == 'true'
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # TODO: Consider generating package.lock.json file and using cache for all setup-dotnet actions.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Test solution
+        run: dotnet test --logger trx --logger html --results-directory tests --collect "XPlat Code Coverage" *.slnx
+        working-directory: backend
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: '!cancelled()'
+        with:
+          name: api-test-results
+          path: backend/tests/
+
+      - name: Create coverage report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        if: '!cancelled()'
+        with:
+          filename: 'backend/tests/*/coverage.cobertura.xml'
+          badge: true
+          format: 'markdown'
+          output: 'both'
+          fail_below_min: true
+          thresholds: '0 80'
+
+      - name: Write coverage report to job summary
+        if: '!cancelled()'
+        run: |
+          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
+          echo COVERAGE=$(cat code-coverage-results.md | awk -F'|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
+
+      # TODO: Consider adding icon/logo here.
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        if: '!cancelled()'
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.BADGE_GIST_ID }}
+          filename: ${{ env.API_IMAGE }}-coverage-${{ github.ref_name }}.json
+          label: API Coverage
+          message: ${{ env.COVERAGE }}%
+          valColorRange: ${{ env.COVERAGE }}
+          maxColorRange: 80
+          minColorRange: 0
+
+  test-api-mutation:
+    name: API mutation testing
+    runs-on: ubuntu-latest
+    needs: [test-api]
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -81,51 +151,26 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Test
-        run: dotnet test --logger trx --logger html --results-directory coverage --collect "XPlat Code Coverage"
+      - name: Install Stryker
+        run: dotnet tool install -g dotnet-stryker
+
+      - name: Mutation testing
+        run: dotnet stryker -O stryker
         working-directory: backend
 
-      - name: Upload test results
+      # TODO: Consider writing info to summary & badges.
+      - name: Upload mutation test results
         uses: actions/upload-artifact@v4
-        if: '!cancelled()'
         with:
-          name: coverage
-          path: backend/coverage
-
-      - name: Code coverage summary report
-        uses: irongut/CodeCoverageSummary@v1.3.0
-        if: '!cancelled()'
-        with:
-          filename: 'backend/coverage/*/coverage.cobertura.xml'
-          badge: true
-          format: 'markdown'
-          output: 'both'
-          fail_below_min: true
-          thresholds: '0 80'
-
-      - name: Write to Job Summary
-        run: |
-          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
-          echo COVERAGE=$(cat code-coverage-results.md | awk -F'|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
-        if: '!cancelled()'
-
-      - name: Create Awesome Badge
-        uses: schneegans/dynamic-badges-action@v1.7.0
-        if: '!cancelled()'
-        with:
-          auth: ${{ secrets.GIST_SECRET }}
-          gistID: 0184962696ef0364be7a3f491133f2f9
-          filename: ${{ env.API_IMAGE }}-coverage-${{ github.ref_name }}.json
-          label: API Coverage
-          message: ${{ env.COVERAGE }}%
-          valColorRange: ${{ env.COVERAGE }}
-          maxColorRange: 80
-          minColorRange: 0
+          name: api-mutation-test-results
+          path: backend/stryker/reports/mutation-report.html
 
   build-api:
+    name: Build API
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-api]
-    if: needs.check-changed-files.outputs.backend_changed == 'true'
+    needs: [test-api]
+    outputs:
+      sha: ${{ steps.save.outputs.sha }}
 
     permissions:
       contents: read
@@ -135,7 +180,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Login to GitHub Container registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -147,6 +192,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.API_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
+            type=sha
 
       - name: Build and push Docker image
         id: push
@@ -158,13 +212,77 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  test-web-ui:
+      - name: Save SHA tag for deployment
+        id: save
+        run: |
+          SHA_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep "sha-" | cut -d':' -f2)
+          echo "Saving SHA tag: $SHA_TAG"
+          echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
+
+  test-web:
+    name: Test Web
     runs-on: ubuntu-latest
     needs: check-changed-files
     if: needs.check-changed-files.outputs.frontend_changed == 'true'
 
+    permissions:
+      contents: read
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Test app
+        run: pnpm test --watch=false --browsers=ChromeHeadless --code-coverage
+        working-directory: frontend
+
+      - name: Write coverage report to job summary
+        if: '!cancelled()'
+        run: |
+          cat coverage/coverage.txt >> $GITHUB_STEP_SUMMARY |
+          echo COVERAGE=$(cat coverage/coverage.txt | grep % | awk -F '[% ]+' '{ sum += $3; count++ } END { print sum/count }') >> $GITHUB_ENV
+        working-directory: frontend
+
+      # TODO: Consider adding icon/logo here.
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        if: '!cancelled()'
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.BADGE_GIST_ID }}
+          filename: ${{ env.WEB_IMAGE }}-coverage-${{ github.ref_name }}.json
+          label: Web UI Coverage
+          message: ${{ env.COVERAGE }}%
+          valColorRange: ${{ env.COVERAGE }}
+          maxColorRange: 80
+          minColorRange: 0
+
+  test-web-mutation:
+    name: Web mutation testing
+    runs-on: ubuntu-latest
+    needs: [test-web]
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Install pnpm
@@ -172,45 +290,34 @@ jobs:
         with:
           version: latest
 
-      - name: Adding Node.js
+      - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: latest
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
         working-directory: frontend
 
-      - name: Test App
-        run: pnpm test --watch=false --browsers=ChromeHeadless --code-coverage
+      - name: Mutation testing
+        run: pnpm exec stryker run
         working-directory: frontend
 
-      - name: Write to Job Summary
-        if: '!cancelled()'
-        run: |
-          cat coverage/coverage.txt >> $GITHUB_STEP_SUMMARY |
-          echo COVERAGE=$(cat coverage/coverage.txt | grep % | awk -F '[% ]+' '{ sum += $3; count++ } END { print sum/count }') >> $GITHUB_ENV
-        working-directory: frontend
-
-      - name: Create Awesome Badge
-        uses: schneegans/dynamic-badges-action@v1.7.0
-        if: '!cancelled()'
+      # TODO: Consider writing info to summary & badges.
+      - name: Upload mutation test results
+        uses: actions/upload-artifact@v4
         with:
-          auth: ${{ secrets.GIST_SECRET }}
-          gistID: 0184962696ef0364be7a3f491133f2f9
-          filename: ${{ env.WEB_UI_IMAGE }}-coverage-${{ github.ref_name }}.json
-          label: WEB UI Coverage
-          message: ${{ env.COVERAGE }}%
-          valColorRange: ${{ env.COVERAGE }}
-          maxColorRange: 80
-          minColorRange: 0
+          name: web-mutation-test-results
+          path: frontend/reports/mutation/mutation.html
 
-  build-web-ui:
+  build-web:
+    name: Build Web
     runs-on: ubuntu-latest
-    needs: [check-changed-files, test-web-ui]
-    if: needs.check-changed-files.outputs.frontend_changed == 'true'
+    needs: [test-web]
+    outputs:
+      sha: ${{ steps.save.outputs.sha }}
 
     permissions:
       contents: read
@@ -220,16 +327,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set CONFIG_FILE
+      - name: Set CONFIG_FILE based on environment
         id: set-config
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "CONFIG_FILE=config.production.ts" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
             echo "CONFIG_FILE=config.development.ts" >> $GITHUB_ENV
+          else
+            echo "CONFIG_FILE=config.production.ts" >> $GITHUB_ENV
           fi
 
-      - name: Login to GitHub Container registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -240,7 +347,16 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.WEB_UI_IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.WEB_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
+            type=sha
 
       - name: Build and push Docker image
         id: push
@@ -248,18 +364,26 @@ jobs:
         with:
           push: true
           context: ./frontend
-          file: ${{ env.WEB_UI_DOCKERFILE }}
+          file: ${{ env.WEB_DOCKERFILE }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             CONFIG_FILE=${{ env.CONFIG_FILE }}
 
+      - name: Save SHA tag for deployment
+        id: save
+        run: |
+          SHA_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep "sha-" | cut -d':' -f2)
+          echo "Saving SHA tag: $SHA_TAG"
+          echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
+
   deploy:
+    name: Deploy production
     runs-on: ubuntu-latest
-    needs: [check-changed-files, build-api, build-web-ui]
+    needs: [check-changed-files, build-api, build-web]
     if: |
-      always() && !cancelled() &&
-      github.ref == 'refs/heads/main' &&
+      always() && !cancelled() && !failure() &&
+      (github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))) &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
         needs.check-changed-files.outputs.frontend_changed == 'true' ||
@@ -288,17 +412,33 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
+          API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          envs: DB_CHANGED
+          envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG
           script: |
+            echo "DB_CHANGED: $DB_CHANGED"
+            echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "WEB_SHA_TAG: $WEB_SHA_TAG"
             cd /tmp/nitrotype-tracker
             mv .env.prod .env
+            sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             sed -i '/ports:/{N;d}' docker-compose.yml
+            DEPLOY_SERVICES=$(docker compose config --services)
+            if [ -z $API_SHA_TAG ]; then
+              echo "API will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $WEB_SHA_TAG ]; then
+              echo "WEB will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^web$' | tr '\n' ' ')
+            fi
             docker compose pull
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
@@ -315,13 +455,15 @@ jobs:
                 exit 1
               fi
             fi
-            docker compose up -d
+            echo "Deploying the following services: $DEPLOY_SERVICES"
+            docker compose up -d $DEPLOY_SERVICES
 
   deploy-develop:
+    name: Deploy development
     runs-on: ubuntu-latest
-    needs: [check-changed-files, build-api, build-web-ui]
+    needs: [check-changed-files, build-api, build-web]
     if: |
-      always() && !cancelled() &&
+      always() && !cancelled() && !failure() &&
       github.ref == 'refs/heads/develop' &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
@@ -351,16 +493,32 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
+          API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          envs: DB_CHANGED
+          envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG
           script: |
+            echo "DB_CHANGED: $DB_CHANGED"
+            echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "WEB_SHA_TAG: $WEB_SHA_TAG"
             cd /tmp/dev-nitrotype-tracker
             mv .env.dev .env
+            sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
+            DEPLOY_SERVICES=$(docker compose config --services)
+            if [ -z $API_SHA_TAG ]; then
+              echo "API will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $WEB_SHA_TAG ]; then
+              echo "WEB will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^web$' | tr '\n' ' ')
+            fi
             docker compose pull
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
@@ -377,4 +535,5 @@ jobs:
                 exit 1
               fi
             fi
-            docker compose up -d
+            echo "Deploying the following services: $DEPLOY_SERVICES"
+            docker compose up -d $DEPLOY_SERVICES
