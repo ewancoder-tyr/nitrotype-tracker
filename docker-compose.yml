@@ -7,7 +7,7 @@ networks:
 
 services:
   api:
-    image: ghcr.io/ewancoder/nitrotype-tracker-api:${TAG}
+    image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
     container_name: ${PREFIX}nitrotype-tracker-api
     volumes:
       - /data/${VOLUME_ROOT}/dataprotection:/app/dataprotection
