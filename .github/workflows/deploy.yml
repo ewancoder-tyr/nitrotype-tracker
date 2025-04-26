@@ -115,10 +115,10 @@ jobs:
           thresholds: '0 80'
 
       - name: Write coverage report to job summary
+        if: '!cancelled()'
         run: |
           cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
           echo COVERAGE=$(cat code-coverage-results.md | awk -F'|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
-        if: '!cancelled()'
 
       # TODO: Consider adding icon/logo here.
       - name: Create coverage badge
@@ -222,61 +222,70 @@ jobs:
           echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
 
   test-web:
+    name: Test Web
     runs-on: ubuntu-latest
     needs: check-changed-files
     if: needs.check-changed-files.outputs.frontend_changed == 'true'
 
+    permissions:
+      contents: read
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: latest
 
-      - name: Adding Node.js
+      - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: latest
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
         working-directory: frontend
 
-      - name: Test App
+      - name: Test app
         run: pnpm test --watch=false --browsers=ChromeHeadless --code-coverage
         working-directory: frontend
 
-      - name: Write to Job Summary
+      - name: Write coverage report to job summary
         if: '!cancelled()'
         run: |
           cat coverage/coverage.txt >> $GITHUB_STEP_SUMMARY |
           echo COVERAGE=$(cat coverage/coverage.txt | grep % | awk -F '[% ]+' '{ sum += $3; count++ } END { print sum/count }') >> $GITHUB_ENV
         working-directory: frontend
 
-      - name: Create Awesome Badge
+      # TODO: Consider adding icon/logo here.
+      - name: Create coverage badge
         uses: schneegans/dynamic-badges-action@v1.7.0
         if: '!cancelled()'
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: ${{ env.BADGE_GIST_ID }}
           filename: ${{ env.WEB_IMAGE }}-coverage-${{ github.ref_name }}.json
-          label: WEB UI Coverage
+          label: Web UI Coverage
           message: ${{ env.COVERAGE }}%
           valColorRange: ${{ env.COVERAGE }}
           maxColorRange: 80
           minColorRange: 0
 
   test-web-mutation:
+    name: Web mutation testing
     runs-on: ubuntu-latest
     needs: [check-changed-files, test-web]
     if: needs.check-changed-files.outputs.frontend_changed == 'true'
 
+    permissions:
+      contents: read
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Install pnpm
@@ -284,28 +293,30 @@ jobs:
         with:
           version: latest
 
-      - name: Adding Node.js
+      - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: latest
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
         working-directory: frontend
 
-      - name: Test App Mutation
+      - name: Mutation testing
         run: pnpm exec stryker run
         working-directory: frontend
 
-      - name: Upload Stryker HTML Report
+      # TODO: Consider writing info to summary & badges.
+      - name: Upload mutation test results
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-mutation-report.html
+          name: web-mutation-test-results
           path: frontend/reports/mutation/mutation.html
 
   build-web:
+    name: Build Web
     runs-on: ubuntu-latest
     needs: [check-changed-files, test-web]
     if: needs.check-changed-files.outputs.frontend_changed == 'true'
@@ -320,7 +331,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set CONFIG_FILE
+      - name: Set CONFIG_FILE based on environment
         id: set-config
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
@@ -329,7 +340,7 @@ jobs:
             echo "CONFIG_FILE=config.development.ts" >> $GITHUB_ENV
           fi
 
-      - name: Login to GitHub Container registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
