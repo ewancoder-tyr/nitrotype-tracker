@@ -117,7 +117,7 @@ jobs:
       - name: Write coverage report to job summary
         if: '!cancelled()'
         run: |
-          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
+          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
           echo COVERAGE=$(cat code-coverage-results.md | awk -F'|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
 
       # TODO: Consider adding icon/logo here.
@@ -255,7 +255,9 @@ jobs:
       - name: Write coverage report to job summary
         if: '!cancelled()'
         run: |
-          cat coverage/coverage.txt >> $GITHUB_STEP_SUMMARY |
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat coverage/coverage.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo COVERAGE=$(cat coverage/coverage.txt | grep % | awk -F '[% ]+' '{ sum += $3; count++ } END { print sum/count }') >> $GITHUB_ENV
         working-directory: frontend
 
