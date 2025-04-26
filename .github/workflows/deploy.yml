@@ -486,11 +486,11 @@ jobs:
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
-              echo "API will not be deployed.
+              echo "API will not be deployed."
               DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
             fi
             if [ -z $WEB_SHA_TAG ]; then
-              echo "WEB will not be deployed.
+              echo "WEB will not be deployed."
               DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^web$' | tr '\n' ' ')
             fi
             docker compose pull
