@@ -334,10 +334,10 @@ jobs:
       - name: Set CONFIG_FILE based on environment
         id: set-config
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "CONFIG_FILE=config.production.ts" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
             echo "CONFIG_FILE=config.development.ts" >> $GITHUB_ENV
+          else
+            echo "CONFIG_FILE=config.production.ts" >> $GITHUB_ENV
           fi
 
       - name: Login to GitHub Container Registry
