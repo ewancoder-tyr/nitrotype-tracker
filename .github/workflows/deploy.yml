@@ -42,7 +42,10 @@ jobs:
         id: filter
         run: |
           BEFORE_SHA="${{ github.event.before }}"
-          echo "Checking files"
+          CURRENT_SHA=$(git rev-parse HEAD)
+          echo "Checking files:"
+          echo "BEFORE_SHA: $BEFORE_SHA"
+          echo "CURRENT_SHA: $CURRENT_SHA"
           if [ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE_SHA" ]; then
             echo "First time push. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
