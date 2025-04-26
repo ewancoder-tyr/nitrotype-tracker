@@ -73,6 +73,20 @@ jobs:
             echo "db=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check TODOs
+        run: |
+          CURRENT_SHA=$(git rev-parse HEAD)
+          echo "### Pending TODOs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          grep --exclude-dir=.git -rniE ".*//[[:space:]]*todo|.*#[[:space:]]TODO" | while IFS= read -r line; do
+            FILE=$(echo $line | awk -F: '{ print $1 }')
+            LINE_NUMBER=$(echo $line | awk -F: '{ print $2 }')
+            TODO=$(echo $line | awk -F: '{for(i=3;i<=NF;i++) printf "%s%s", $i, (i<NF ? ":" : "")}' | awk '{$1=$1; print}')
+            echo "- \`$TODO\`" >> $GITHUB_STEP_SUMMARY
+            echo "  > [$FILE](https://github.com/${{ github.repository }}/blob/$CURRENT_SHA/$FILE#L$LINE_NUMBER)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
   test-api:
     name: Test API
     runs-on: ubuntu-latest
