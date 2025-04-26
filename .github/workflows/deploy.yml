@@ -382,6 +382,7 @@ jobs:
           echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
 
   deploy:
+    name: Deploy production
     runs-on: ubuntu-latest
     needs: [check-changed-files, build-api, build-web]
     if: |
@@ -445,6 +446,7 @@ jobs:
             docker compose up -d
 
   deploy-develop:
+    name: Deploy development
     runs-on: ubuntu-latest
     needs: [check-changed-files, build-api, build-web]
     if: |
