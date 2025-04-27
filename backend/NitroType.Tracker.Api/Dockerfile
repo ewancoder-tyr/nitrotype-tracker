@@ -19,6 +19,11 @@ ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "NitroType.Tracker.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+
+# Copy Healthcheck executable: a workaround for chiseled images.
+COPY --from=ghcr.io/alexaka1/distroless-dotnet-healthchecks:1 / /healthchecks
+HEALTHCHECK CMD ["/healthchecks/Distroless.HealthChecks", "--uri", "http://localhost:8080/health"]
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "NitroType.Tracker.Api.dll"]
