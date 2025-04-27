@@ -70,6 +70,8 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 - [x] [Domain.com](https://www.domain.com)
 - [x] [Caddy](https://caddyserver.com) & [Let's Encrypt](https://letsencrypt.org)
 - [x] [Nginx Unprivileged](https://github.com/nginx/docker-nginx-unprivileged)
+  - [x] Slim version: ~12.2 Mb image (default ~47.5 Mb)
+- [x] [Chiseled image](https://github.com/dotnet/dotnet-docker/blob/main/documentation/ubuntu-chiseled.md) for Asp.NET: 126 Mb image (default 233 Mb)
 - [x] [pgAdmin](https://www.pgadmin.org)
 - [x] [Netdata](https://www.netdata.cloud)
 
@@ -80,4 +82,3 @@ Authentication flow supports both JWT and Cookie authentication and works with G
 ### Deployments
 
 Project has 2 environments: development and production. Deployments are incremental: if frontend didn't change we only deploy backend, and wise versa; database can be deployed separately too.
-
