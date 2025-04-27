@@ -205,7 +205,7 @@ jobs:
 
   test-api-sonarqube:
     name: SonarQube static analysis
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: test-api
 
     permissions:
@@ -226,7 +226,7 @@ jobs:
       - name: Cache SonarQube Cloud packages
         uses: actions/cache@v4
         with:
-          path: ~\sonar\cache
+          path: ~/sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
@@ -234,28 +234,30 @@ jobs:
         id: cache-sonar-scanner
         uses: actions/cache@v4
         with:
-          path: .\.sonar\scanner
+          path: ./.sonar/scanner
           key: ${{ runner.os }}-sonar-scanner
           restore-keys: ${{ runner.os }}-sonar-scanner
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
       - name: Install SonarQube Cloud scanner
         if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
         run: |
-          New-Item -Path .\.sonar\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+          mkdir -p ./.sonar/scanner
+          dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
 
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.API_SONAR_TOKEN }}
-        shell: powershell
         working-directory: backend
         run: |
-          ..\.sonar\scanner\dotnet-sonarscanner begin /k:"${{ env.REPO_USER }}_${{ env.PROJECT_NAME }}-api" /o:"${{ env.REPO_USER }}" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+          ../.sonar/scanner/dotnet-sonarscanner begin /k:"${{ env.REPO_USER }}_${{ env.PROJECT_NAME }}-api" /o:"${{ env.REPO_USER }}" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
           rm *.sln
           dotnet build
-          ..\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}"
-
+          ../.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}"
 
   build-api:
     name: Build API
