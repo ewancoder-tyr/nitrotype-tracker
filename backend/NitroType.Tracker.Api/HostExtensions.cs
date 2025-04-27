@@ -300,6 +300,12 @@ public static class HostExtensions
             .WithDescription("Signs out current user (removes the cookie) so you can sign in with a different login.")
             .RequireAuthorization();
 
+        // Separate url for healthchecks.
+        app.MapGet("/health", () => DateTime.UtcNow)
+            .WithTags("Diagnostics")
+            .WithSummary("Healthcheck")
+            .WithDescription("Responds with 200 when healthy");
+
         // Add diagnostics endpoint.
         app.MapGet("/diag", () => DateTime.UtcNow)
             .WithTags("Diagnostics")
