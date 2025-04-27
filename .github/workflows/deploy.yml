@@ -251,8 +251,9 @@ jobs:
         shell: powershell
         working-directory: backend
         run: |
-          ..\.sonar\scanner\dotnet-sonarscanner begin /k:"ewancoder_nitrotype-tracker-api" /o:"ewancoder" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          dotnet build NitroType.Tracker.slnx
+          ..\.sonar\scanner\dotnet-sonarscanner begin /k:"ewancoder_${{ env.PROJECT_NAME }}-api" /o:"ewancoder" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+          rm *.sln
+          dotnet build
           ..\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}"
 
 
