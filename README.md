@@ -56,6 +56,7 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 - [x] [ESLint](https://eslint.org)
 - [x] [Prettier](https://prettier.io)
 - [x] [Karma Sabarivka coverage reporter](https://github.com/kopach/karma-sabarivka-reporter)
+- [ ] [WallabyJS (doesn't work with monorepos)](https://wallabyjs.com)
 
 ### DevOps
 
@@ -67,9 +68,16 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 - [x] [Shields.io](https://shields.io)
 - [x] [Digital Ocean](https://www.digitalocean.com)
 - [x] [Domain.com](https://www.domain.com)
-- [x] [Caddy](https://caddyserver.com)
+- [x] [Caddy](https://caddyserver.com) & [Let's Encrypt](https://letsencrypt.org)
+- [x] [Nginx Unprivileged](https://github.com/nginx/docker-nginx-unprivileged)
+- [x] [pgAdmin](https://www.pgadmin.org)
+- [x] [Netdata](https://www.netdata.cloud)
 
 ### Authentication
 
 Authentication flow supports both JWT and Cookie authentication and works with Google sign in for user tokens & Duende IdentityServer for service to service tokens.
+
+### Deployments
+
+Project has 2 environments: development and production. Deployments are incremental: if frontend didn't change we only deploy backend, and wise versa; database can be deployed separately too.
 
