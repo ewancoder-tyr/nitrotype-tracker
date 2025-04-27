@@ -520,7 +520,7 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           source: "db,docker-compose.yml,.env.prod"
-          target: /tmp/$${{ env.PROJECT_NAME }}
+          target: /tmp/${{ env.PROJECT_NAME }}
 
       - name: Deploy to DO
         uses: appleboy/ssh-action@v1.0.3
