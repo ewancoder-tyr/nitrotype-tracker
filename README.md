@@ -23,3 +23,44 @@ Shows league / season racing statistics.
 ![api-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-api-coverage-develop.json)
 ![web-ui-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-web-coverage-develop.json)
 ![todos](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-todos-develop.json)
+
+## Powered by
+
+This is the list of technologies used in every TyR pet project, with relevant technologies used in this one checked.
+
+- [x] [.NET Core / C#](https://dotnet.microsoft.com)
+- [x] [Rider IDE](https://www.jetbrains.com/rider)
+- [x] [PostgreSQL](https://www.postgresql.org)
+- [x] [DbMate](https://github.com/amacneil/dbmate)
+- [x] [Seq](https://datalust.co/seq)
+- [x] [Scalar](https://scalar.com)
+- [x] [XUnit, Moq, AutoFixture, AutoMoq](https://xunit.net)
+- [x] [SonarQube](https://www.sonarsource.com/products/sonarqube)
+- [x] [NCrunch](https://www.ncrunch.net)
+- [x] [Stryker](https://stryker-mutator.io)
+- [x] [Coverlet coverage collector](https://github.com/coverlet-coverage/coverlet)
+- [ ] [Sign In with Google](https://developers.google.com/identity/gsi/web/guides/overview)
+- [ ] [Duende IdentityServer](https://duendesoftware.com/products/identityserver)
+
+- [x] [TypeScript](https://www.typescriptlang.org)
+- [x] [pNPm](https://pnpm.io)
+- [x] [Angular](https://angular.dev)
+- [x] [RxJS](https://rxjs.dev/)
+- [x] [ESLint](https://eslint.org)
+- [x] [Prettier](https://prettier.io)
+- [x] [Karma Sabarivka coverage reporter](https://github.com/kopach/karma-sabarivka-reporter)
+
+- [x] [Bash](https://www.gnu.org/software/bash)
+- [x] [GIT](https://git-scm.com)
+- [x] [Github Actions](https://github.com/features/actions)
+- [x] [Docker / Compose](https://www.docker.com)
+- [x] [GitHub Container Registry](https://docs.github.com/en/packages)
+- [x] [Shields.io](https://shields.io)
+- [x] [Digital Ocean](https://www.digitalocean.com)
+- [x] [Domain.com](https://www.domain.com)
+- [x] [Caddy](https://caddyserver.com)
+
+### Authentication
+
+Authentication flow supports both JWT and Cookie authentication and works with Google sign in for user tokens & Duende IdentityServer for service to service tokens.
+
