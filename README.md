@@ -26,21 +26,28 @@ Shows league / season racing statistics.
 
 ## Powered by
 
-This is the list of technologies used in every TyR pet project, with relevant technologies used in this one checked.
+This is the list of technologies used in every TyR pet project. Unchecked means it's (probably) still present in the stack, but is not being used by this particular project as of now.
+
+### Both backend and frontend
+
+- [x] [Rider IDE](https://www.jetbrains.com/rider)
+- [x] [SonarQube](https://www.sonarsource.com/products/sonarqube)
+- [x] [Stryker](https://stryker-mutator.io)
+- [ ] [Sign In with Google](https://developers.google.com/identity/gsi/web/guides/overview)
+
+### Backend
 
 - [x] [.NET Core / C#](https://dotnet.microsoft.com)
-- [x] [Rider IDE](https://www.jetbrains.com/rider)
 - [x] [PostgreSQL](https://www.postgresql.org)
 - [x] [DbMate](https://github.com/amacneil/dbmate)
 - [x] [Seq](https://datalust.co/seq)
 - [x] [Scalar](https://scalar.com)
 - [x] [XUnit, Moq, AutoFixture, AutoMoq](https://xunit.net)
-- [x] [SonarQube](https://www.sonarsource.com/products/sonarqube)
 - [x] [NCrunch](https://www.ncrunch.net)
-- [x] [Stryker](https://stryker-mutator.io)
 - [x] [Coverlet coverage collector](https://github.com/coverlet-coverage/coverlet)
-- [ ] [Sign In with Google](https://developers.google.com/identity/gsi/web/guides/overview)
 - [ ] [Duende IdentityServer](https://duendesoftware.com/products/identityserver)
+
+### Frontend
 
 - [x] [TypeScript](https://www.typescriptlang.org)
 - [x] [pNPm](https://pnpm.io)
@@ -49,6 +56,8 @@ This is the list of technologies used in every TyR pet project, with relevant te
 - [x] [ESLint](https://eslint.org)
 - [x] [Prettier](https://prettier.io)
 - [x] [Karma Sabarivka coverage reporter](https://github.com/kopach/karma-sabarivka-reporter)
+
+### DevOps
 
 - [x] [Bash](https://www.gnu.org/software/bash)
 - [x] [GIT](https://git-scm.com)
