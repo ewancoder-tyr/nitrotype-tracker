@@ -97,6 +97,19 @@ jobs:
             echo "  > [$FILE](https://github.com/${{ github.repository }}/blob/$CURRENT_SHA/$FILE#L$LINE_NUMBER)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           done
+          todos=$(grep --exclude-dir=.git -rniE ".*//[[:space:]]*todo|.*#[[:space:]]TODO" | wc -l)
+          echo TODOS_COUNT=$todos >> $GITHUB_ENV
+
+      # TODO: Consider adding icon/logo here.
+      - name: Create TODOs badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.BADGE_GIST_ID }}
+          filename: ${{ env.PROJECT_NAME }}-todos-${{ github.ref_name }}.json
+          label: TODOs
+          message: ${{ env.TODOS_COUNT }}
+          color: '#7dcbff'
 
   test-api:
     name: Test API
