@@ -73,6 +73,17 @@ jobs:
             echo "db=true" >> $GITHUB_OUTPUT
           fi
 
+  generate-todos:
+    name: Check TODOs
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check TODOs
         run: |
           CURRENT_SHA=$(git rev-parse HEAD)
