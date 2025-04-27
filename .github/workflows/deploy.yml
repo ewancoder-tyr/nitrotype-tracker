@@ -251,7 +251,7 @@ jobs:
         shell: powershell
         working-directory: backend
         run: |
-          ..\.sonar\scanner\dotnet-sonarscanner begin /k:"ewancoder_${{ env.PROJECT_NAME }}-api" /o:"ewancoder" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+          ..\.sonar\scanner\dotnet-sonarscanner begin /k:"${{ env.REPO_USER }}_${{ env.PROJECT_NAME }}-api" /o:"${{ env.REPO_USER }}" /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
           rm *.sln
           dotnet build
           ..\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.API_SONAR_TOKEN }}"
@@ -275,7 +275,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -454,7 +454,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
