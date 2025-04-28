@@ -603,11 +603,11 @@ jobs:
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.USERNAME }}
-          passphrase: ${{ secrets.PASSWORD }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
+          host: ${{ secrets.HOST_DEV }}
+          username: ${{ secrets.USERNAME_DEV }}
+          passphrase: ${{ secrets.PASSWORD_DEV }}
+          key: ${{ secrets.KEY_DEV }}
+          port: ${{ secrets.PORT_DEV }}
           source: "db,docker-compose.yml,.env.dev"
           target: /tmp/dev-${{ env.PROJECT_NAME }}
 
@@ -619,11 +619,11 @@ jobs:
           WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
           PROJECT_NAME: ${{ env.PROJECT_NAME }}
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          passphrase: ${{ secrets.PASSWORD }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
+          host: ${{ secrets.HOST_DEV }}
+          username: ${{ secrets.USERNAME_DEV }}
+          passphrase: ${{ secrets.PASSWORD_DEV }}
+          key: ${{ secrets.KEY_DEV }}
+          port: ${{ secrets.PORT_DEV }}
           envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
           script: |
             echo "DB_CHANGED: $DB_CHANGED"
