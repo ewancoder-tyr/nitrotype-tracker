@@ -634,6 +634,7 @@ jobs:
             mv .env.dev .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
+            sed -i '/- typingrealm/a\      - tyr-overlay' docker-compose.yml
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
               echo "API will not be deployed."
