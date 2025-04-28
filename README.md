@@ -3,6 +3,10 @@
 ![license](https://img.shields.io/github/license/ewancoder/nitrotype-tracker?color=blue)
 ![activity](https://img.shields.io/github/commit-activity/m/ewancoder/nitrotype-tracker)
 
+| API | UI |
+| --- | -- |
+| [![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=ewancoder_nitrotype-tracker-api)](https://sonarcloud.io/summary/new_code?id=ewancoder_nitrotype-tracker-api) | [![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=ewancoder_nitrotype-tracker-web)](https://sonarcloud.io/summary/new_code?id=ewancoder_nitrotype-tracker-web) |
+
 Statistics tracker for NitroType racing. Initially made for KECATS team.
 Shows league / season racing statistics.
 
