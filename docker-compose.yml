@@ -48,9 +48,11 @@ services:
 
   web:
     image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}
-    container_name: ${PREFIX}nitrotype-tracker-web
+    #container_name: ${PREFIX}nitrotype-tracker-web
     restart: unless-stopped
     mem_limit: 1g
     mem_reservation: 750m
     networks:
       - typingrealm
+    deploy:
+      replicas: ${WEB_REPLICAS}
