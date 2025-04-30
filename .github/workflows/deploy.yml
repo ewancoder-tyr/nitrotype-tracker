@@ -562,9 +562,10 @@ jobs:
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
+              NETWORK_NAME=$(docker compose config --format json | jq -r '.networks["local"].name')
               docker compose stop api
               docker run --rm \
-                --network typingrealm \
+                --network $NETWORK_NAME \
                 -v /tmp/$PROJECT_NAME/db/migrations:/db/migrations \
                 --env-file /data/$PROJECT_NAME/secrets.env \
                 amacneil/dbmate:latest --wait up
