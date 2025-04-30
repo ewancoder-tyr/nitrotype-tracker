@@ -494,6 +494,7 @@ jobs:
           echo "Saving SHA tag: $SHA_TAG"
           echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
 
+  # TODO: SCP doesn't delete old files during deployment - fix this.
   deploy:
     name: Deploy production
     runs-on: ubuntu-latest
