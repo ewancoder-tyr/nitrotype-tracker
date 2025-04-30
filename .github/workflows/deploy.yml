@@ -634,7 +634,7 @@ jobs:
             mv .env.dev .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
-            sed -i '/- typingrealm/a\      - tyr-overlay' docker-compose.yml
+            sed -i "s/#- services/- services/g" docker-compose.yml
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
               echo "API will not be deployed."
@@ -648,9 +648,10 @@ jobs:
             docker compose up -d postgres
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
+              NETWORK_NAME=$(docker compose config --format json | jq -r '.networks["local"].name')
               docker compose stop api
               docker run --rm \
-                --network typingrealm \
+                --network $NETWORK_NAME \
                 -v /tmp/dev-$PROJECT_NAME/db/migrations:/db/migrations \
                 --env-file /data/dev-$PROJECT_NAME/secrets.env \
                 amacneil/dbmate:latest --wait up

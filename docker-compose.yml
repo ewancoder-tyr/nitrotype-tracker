@@ -1,11 +1,15 @@
 networks:
-  typingrealm:
-    name: typingrealm
-    external: true
-  tyr-overlay:
+  local: # Local network for backend services communication.
+    name: ${PREFIX}nitrotype-tracker-network
+  public: # Network for proxy access from the outside world.
     driver: overlay
     attachable: true
-    name: tyr-overlay
+    name: tyr-proxy
+    external: true
+  services: # Network for access to backend services: Seq logging, pgAdmin for DB.
+    driver: overlay
+    attachable: true
+    name: tyr-services
     external: true
 
 services:
@@ -24,7 +28,9 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - typingrealm
+      - local
+      - public
+      - services
 
   postgres:
     image: postgres:17
@@ -44,7 +50,8 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - typingrealm
+      - local
+      #- services # Disabled in production until needed.
 
   web:
     image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}
@@ -53,6 +60,6 @@ services:
     mem_limit: 1g
     mem_reservation: 750m
     networks:
-      - typingrealm
+      - public
     deploy:
       replicas: ${WEB_REPLICAS}
