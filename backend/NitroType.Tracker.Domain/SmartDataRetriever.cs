@@ -65,6 +65,7 @@ public sealed class SmartDataRetriever
                     if (hash == lastHash)
                     {
                         _logger.LogInformation("Skipping saving {Team} team data, data did not change", teamName);
+                        _queriedTeams[item.Key] = DateTime.UtcNow;
                         continue;
                     }
 
