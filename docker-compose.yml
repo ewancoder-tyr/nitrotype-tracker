@@ -1,6 +1,6 @@
 networks:
   local: # Local network for backend services communication.
-    name: ${PREFIX}nitrotype-tracker-network
+    #name: ${PREFIX}nitrotype-tracker_local
   public: # Network for proxy access from the outside world.
     driver: overlay
     attachable: true
