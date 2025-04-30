@@ -8,6 +8,7 @@ public sealed class SmartDataRetriever
     private static readonly TimeSpan _queryInterval = TimeSpan.FromMinutes(5);
     private readonly Random _random = Random.Shared;
     private readonly ConcurrentDictionary<string, DateTime> _queriedTeams = new();
+    private readonly ConcurrentDictionary<string, int> _teamLastHash = new();
     private readonly DataRetriever _dataRetriever;
     private readonly RawDataRepository _rawRepo;
     private readonly ILogger<SmartDataRetriever> _logger;
@@ -26,12 +27,14 @@ public sealed class SmartDataRetriever
     {
         _logger.LogInformation("Registered team {Team}", teamName);
         _queriedTeams.TryAdd(teamName, default);
+        _teamLastHash.TryAdd(teamName, 0);
     }
 
     public void RemoveTeam(string teamName)
     {
         _logger.LogInformation("Removed registration for team {Team}", teamName);
         _queriedTeams.Remove(teamName, out _);
+        _teamLastHash.Remove(teamName, out _);
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -56,11 +59,22 @@ public sealed class SmartDataRetriever
                     var teamName = item.Key;
                     var data = await _dataRetriever.RetrieveRawDataAsync(teamName)
                         .ConfigureAwait(false);
+
+                    var hash = data.GetHashCode();
+                    _teamLastHash.TryGetValue(teamName, out var lastHash);
+                    if (hash == lastHash)
+                    {
+                        _logger.LogInformation("Skipping saving {Team} team data, data did not change", teamName);
+                        continue;
+                    }
+
                     await _rawRepo.SaveAsync(teamName, data)
                         .ConfigureAwait(false);
+
+                    _teamLastHash[teamName] = hash;
                     _queriedTeams[item.Key] = DateTime.UtcNow;
 
-                    _logger.LogInformation("Successfully queried {Team} team", item.Key);
+                    _logger.LogInformation("Successfully saved {Team} team data", item.Key);
                 }
                 catch (Exception exception)
                 {
