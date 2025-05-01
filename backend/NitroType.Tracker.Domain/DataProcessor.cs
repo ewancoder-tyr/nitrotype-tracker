@@ -19,19 +19,19 @@ public sealed class DataProcessor
     {
         var lastProcessedId = await _normalizedDataRepository.GetLastProcessedIdAsync().ConfigureAwait(false);
 
-        // TODO: Create the database/table if not created. Or use migrations.
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
-        cmd.CommandText = team is null
-            ? "SELECT data, timestamp, id, team FROM raw_data WHERE id > @lastId ORDER BY id;"
-            : "SELECT data, timestamp, id, team FROM raw_data where team = @team AND id > @lastId ORDER BY id;";
-
-        cmd.Parameters.AddWithValue("@lastId", lastProcessedId);
-        if (team is not null)
-            cmd.Parameters.AddWithValue("@team", team);
 
         try
         {
+            cmd.CommandText = team is null
+                ? "SELECT data, timestamp, id, team FROM raw_data WHERE id > @lastId ORDER BY id;"
+                : "SELECT data, timestamp, id, team FROM raw_data where team = @team AND id > @lastId ORDER BY id;";
+
+            cmd.Parameters.AddWithValue("@lastId", lastProcessedId);
+            if (team is not null)
+                cmd.Parameters.AddWithValue("@team", team);
+
             var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
             while (await reader.ReadAsync().ConfigureAwait(false))
             {

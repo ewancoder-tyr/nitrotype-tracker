@@ -65,36 +65,30 @@ public sealed class DataNormalizer
                 continue;
             }
 
-            foreach (var seasonData in item.Data.Results.Season)
+            var values = item.Data.Results.Season
+                .Where(seasonData =>
+                    seasonData.Username is not null
+                    && seasonData.Typed.HasValue
+                    && seasonData.Errs.HasValue
+                    && seasonData.RacesPlayed.HasValue
+                    && seasonData.Secs.HasValue)
+                .Select(seasonData => DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp))
+                .ToList();
+
+            try
             {
-                try
-                {
-                    if (seasonData.Username is null ||
-                        !seasonData.Typed.HasValue ||
-                        !seasonData.Errs.HasValue ||
-                        !seasonData.RacesPlayed.HasValue ||
-                        !seasonData.Secs.HasValue)
-                    {
-                        _logger.LogWarning("Saved raw data season was null for one of users of {Id} record", item.Id);
-                        continue;
-                    }
+                await _normalizedRepo.SaveAsync(values)
+                    .ConfigureAwait(false);
 
-                    var normalizedData = DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp);
-
-                    await _normalizedRepo.SaveAsync(normalizedData)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(
-                        ex,
-                        "Failed to process entry for user {Username} in team {Team}",
-                        seasonData.Username, item.Team);
-                }
+                await _normalizedRepo.UpdateLastProcessedIdAsync(item.Id)
+                    .ConfigureAwait(false);
             }
-
-            await _normalizedRepo.UpdateLastProcessedIdAsync(item.Id)
-                .ConfigureAwait(false);
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to process entries for team {Team}, or to update last processed ID", item.Team);
+            }
 
             _logger.LogDebug(
                 "Finished processing data for team {Team} with id {Id}",

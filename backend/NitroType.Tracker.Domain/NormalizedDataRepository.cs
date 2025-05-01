@@ -16,35 +16,41 @@ public sealed class NormalizedDataRepository
         _logger = logger;
     }
 
-    public async ValueTask SaveAsync(NormalizedPlayerData data)
+    public async ValueTask SaveAsync(IList<NormalizedPlayerData> data)
     {
-        //_logger.LogTrace("Saving normalized data for user {Username} in team {Team}", data.Username, data.Team);
-
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
-        cmd.CommandText = @"
-            INSERT INTO ""normalized_data"" 
-            (""username"", ""team"", ""typed"", ""errors"", ""name"", ""races_played"", ""timestamp"", ""secs"")
-            VALUES (@username, @team, @typed, @errors, @name, @racesPlayed, @timestamp, @secs)
-            ON CONFLICT (username, timestamp) DO NOTHING;";
-
-        cmd.Parameters.AddWithValue("@username", data.Username);
-        cmd.Parameters.AddWithValue("@team", data.Team);
-        cmd.Parameters.AddWithValue("@typed", data.Typed);
-        cmd.Parameters.AddWithValue("@errors", data.Errors);
-        cmd.Parameters.AddWithValue("@name", data.Name);
-        cmd.Parameters.AddWithValue("@racesPlayed", data.RacesPlayed);
-        cmd.Parameters.AddWithValue("@timestamp", data.Timestamp);
-        cmd.Parameters.AddWithValue("@secs", data.Secs);
 
         try
         {
+            var values = string.Join(",", Enumerable.Range(0, data.Count)
+                .Select(i => $"(@username{i}, @team{i}, @typed{i}, @errors{i}, @name{i}, @racesPlayed{i}, @timestamp{i}, @secs{i})"));
+
+            cmd.CommandText = $"""
+                INSERT INTO normalized_data
+                (username, team, typed, errors, name, races_played, timestamp, secs)
+                VALUES {values}
+                ON CONFLICT (username, timestamp) DO NOTHING;
+                """;
+
+            for (var i = 0; i < data.Count; i++)
+            {
+                cmd.Parameters.AddWithValue($"@username{i}", data[i].Username);
+                cmd.Parameters.AddWithValue($"@team{i}", data[i].Team);
+                cmd.Parameters.AddWithValue($"@typed{i}", data[i].Typed);
+                cmd.Parameters.AddWithValue($"@errors{i}", data[i].Errors);
+                cmd.Parameters.AddWithValue($"@name{i}", data[i].Name);
+                cmd.Parameters.AddWithValue($"@racesPlayed{i}", data[i].RacesPlayed);
+                cmd.Parameters.AddWithValue($"@timestamp{i}", data[i].Timestamp);
+                cmd.Parameters.AddWithValue($"@secs{i}", data[i].Secs);
+            }
+
+            _logger.LogDebug($"Successfully inserted {data.Count} records");
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-            //_logger.LogTrace("Successfully saved normalized data for user {Username}", data.Username);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to save normalized data for user {Username}", data.Username);
+            _logger.LogError(e, "Failed to save normalized data for {Count} users", data.Count);
             throw;
         }
         finally
@@ -58,10 +64,10 @@ public sealed class NormalizedDataRepository
     {
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
 
         try
         {
+            cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
             var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
             return (long)lastId;
         }
@@ -76,16 +82,18 @@ public sealed class NormalizedDataRepository
     {
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
-        cmd.CommandText = @"
-        UPDATE processing_state 
-        SET last_processed_id = @newId, 
-            last_updated = CURRENT_TIMESTAMP 
-        WHERE id = 1;";
-
-        cmd.Parameters.AddWithValue("@newId", newId);
 
         try
         {
+            cmd.CommandText = """
+                UPDATE processing_state 
+                SET last_processed_id = @newId, 
+                    last_updated = CURRENT_TIMESTAMP 
+                WHERE id = 1;
+                """;
+
+            cmd.Parameters.AddWithValue("@newId", newId);
+
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             _logger.LogDebug("Updated last processed ID to {NewId}", newId);
         }
@@ -96,6 +104,7 @@ public sealed class NormalizedDataRepository
         }
     }
 
+    // TODO: Review this logic.
     public async Task<List<NormalizedPlayerData>> GetTeamStatsAsync(string team, DateTime startDate)
     {
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
