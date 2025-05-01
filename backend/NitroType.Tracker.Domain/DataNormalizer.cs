@@ -72,8 +72,7 @@ public sealed class DataNormalizer
                     && seasonData.Errs.HasValue
                     && seasonData.RacesPlayed.HasValue
                     && seasonData.Secs.HasValue)
-                .Select(seasonData => DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp))
-                .ToList();
+                .Select(seasonData => DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp));
 
             try
             {

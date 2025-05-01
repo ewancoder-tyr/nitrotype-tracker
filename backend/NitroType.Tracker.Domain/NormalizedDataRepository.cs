@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
@@ -16,41 +17,47 @@ public sealed class NormalizedDataRepository
         _logger = logger;
     }
 
-    public async ValueTask SaveAsync(IList<NormalizedPlayerData> data)
+    public async ValueTask SaveAsync(IEnumerable<NormalizedPlayerData> data)
     {
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
         var cmd = connection.CreateCommand();
 
         try
         {
-            var values = string.Join(",", Enumerable.Range(0, data.Count)
-                .Select(i => $"(@username{i}, @team{i}, @typed{i}, @errors{i}, @name{i}, @racesPlayed{i}, @timestamp{i}, @secs{i})"));
+            var valuesBuilder = new StringBuilder();
+            var count = 0;
+
+            foreach (var (item, index) in data.Select((x, i) => (x, i)))
+            {
+                if (index > 0)
+                    valuesBuilder.Append(',');
+
+                valuesBuilder.Append($"(@username{index}, @team{index}, @typed{index}, @errors{index}, @name{index}, @racesPlayed{index}, @timestamp{index}, @secs{index})");
+
+                cmd.Parameters.AddWithValue($"@username{index}", item.Username);
+                cmd.Parameters.AddWithValue($"@team{index}", item.Team);
+                cmd.Parameters.AddWithValue($"@typed{index}", item.Typed);
+                cmd.Parameters.AddWithValue($"@errors{index}", item.Errors);
+                cmd.Parameters.AddWithValue($"@name{index}", item.Name);
+                cmd.Parameters.AddWithValue($"@racesPlayed{index}", item.RacesPlayed);
+                cmd.Parameters.AddWithValue($"@timestamp{index}", item.Timestamp);
+                cmd.Parameters.AddWithValue($"@secs{index}", item.Secs);
+                count++;
+            }
 
             cmd.CommandText = $"""
                 INSERT INTO normalized_data
                 (username, team, typed, errors, name, races_played, timestamp, secs)
-                VALUES {values}
+                VALUES {valuesBuilder}
                 ON CONFLICT (username, timestamp) DO NOTHING;
                 """;
 
-            for (var i = 0; i < data.Count; i++)
-            {
-                cmd.Parameters.AddWithValue($"@username{i}", data[i].Username);
-                cmd.Parameters.AddWithValue($"@team{i}", data[i].Team);
-                cmd.Parameters.AddWithValue($"@typed{i}", data[i].Typed);
-                cmd.Parameters.AddWithValue($"@errors{i}", data[i].Errors);
-                cmd.Parameters.AddWithValue($"@name{i}", data[i].Name);
-                cmd.Parameters.AddWithValue($"@racesPlayed{i}", data[i].RacesPlayed);
-                cmd.Parameters.AddWithValue($"@timestamp{i}", data[i].Timestamp);
-                cmd.Parameters.AddWithValue($"@secs{i}", data[i].Secs);
-            }
-
-            _logger.LogDebug($"Successfully inserted {data.Count} records");
+            _logger.LogDebug($"Successfully inserted {count} records");
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to save normalized data for {Count} users", data.Count);
+            _logger.LogError(e, "Failed to save normalized data");
             throw;
         }
         finally
