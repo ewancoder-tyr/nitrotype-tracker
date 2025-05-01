@@ -14,63 +14,6 @@ public sealed class NormalizedDataRepository
     {
         _dataSource = dataSource;
         _logger = logger;
-
-        InitializeDatabaseAsync().GetAwaiter().GetResult();
-    }
-
-    private async Task InitializeDatabaseAsync()
-    {
-        _logger.LogInformation("Initializing normalized data tables if needed");
-
-        var connection = await _dataSource.OpenConnectionAsync()
-            .ConfigureAwait(false);
-
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = @"
-        CREATE TABLE IF NOT EXISTS ""normalized_data"" (
-            ""id"" BIGSERIAL PRIMARY KEY,
-            ""username"" VARCHAR(50) NOT NULL,
-            ""team"" VARCHAR(50) NOT NULL,
-            ""typed"" BIGINT NOT NULL,
-            ""errors"" BIGINT NOT NULL,
-            ""name"" VARCHAR(100) NOT NULL,
-            ""races_played"" INT NOT NULL,
-            ""timestamp"" TIMESTAMP NOT NULL,
-            ""secs"" BIGINT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS ""processing_state"" (
-            ""id"" INT PRIMARY KEY DEFAULT 1,  -- We'll only ever have one row
-            ""last_processed_id"" BIGINT NOT NULL DEFAULT 0,
-            ""last_updated"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        
-        -- Insert initial record if doesn't exist
-        INSERT INTO ""processing_state"" (""id"", ""last_processed_id"")
-        VALUES (1, 0)
-        ON CONFLICT (id) DO NOTHING;
-
-        CREATE INDEX IF NOT EXISTS idx_normalized_data_team ON normalized_data(team);
-        CREATE INDEX IF NOT EXISTS idx_normalized_data_timestamp ON normalized_data(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_normalized_data_username ON normalized_data(username);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_normalized_data_username_timestamp 
-            ON normalized_data(username, timestamp);";
-
-        try
-        {
-            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-            _logger.LogInformation("Database initialization completed successfully");
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Failed to initialize database");
-            throw;
-        }
-        finally
-        {
-            await cmd.DisposeAsync().ConfigureAwait(false);
-            await connection.DisposeAsync().ConfigureAwait(false);
-        }
     }
 
     public async ValueTask SaveAsync(NormalizedPlayerData data)
