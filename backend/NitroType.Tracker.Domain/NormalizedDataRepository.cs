@@ -227,8 +227,7 @@ public sealed class NormalizedDataRepository
                     });
                 }
 
-                // TODO: Figure out why old people show up in the table.
-                return results.Where(x => x.Name != "invite2team-_im2fast" && x.Name != "Michael Jordan").ToList();
+                return results.ToList();
             }
             finally
             {

@@ -25,6 +25,7 @@ export class RacersTableComponent implements OnInit {
         const data = this.data();
         return data
             .filter(x => x.username !== 'keyboard_elite_cat')
+            .filter(x => x.username !== 'kecats_cat')
             .filter(x => x.racesPlayed > 0)
             .sort((a, b) => b.accuracy - a.accuracy);
     });
