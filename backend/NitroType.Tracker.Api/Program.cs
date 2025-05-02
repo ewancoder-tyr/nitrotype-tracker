@@ -16,10 +16,10 @@ var config = TyrHostConfiguration.Default(
 
 await builder.ConfigureTyrApplicationBuilderAsync(config);
 
-builder.Services.AddHttpClient();
-builder.Services.AddSingleton<DataRetriever>();
-builder.Services.AddSingleton<RawDataRepository>();
-builder.Services.AddSingleton<SmartDataRetriever>();
+//builder.Services.AddHttpClient();
+//builder.Services.AddSingleton<DataRetriever>();
+//builder.Services.AddSingleton<RawDataRepository>();
+//builder.Services.AddSingleton<SmartDataRetriever>();
 builder.Services.AddSingleton<DataProcessor>();
 
 builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
@@ -40,10 +40,10 @@ using var cts = new CancellationTokenSource();
 
 app.ConfigureTyrApplication(config);
 
-var retriever = app.Services.GetRequiredService<SmartDataRetriever>();
-retriever.RegisterTeam("KECATS");
-retriever.RegisterTeam("SSH");
-var task = retriever.RunAsync(cts.Token);
+//var retriever = app.Services.GetRequiredService<SmartDataRetriever>();
+//retriever.RegisterTeam("KECATS");
+//retriever.RegisterTeam("SSH");
+//var task = retriever.RunAsync(cts.Token);
 
 var processor = app.Services.GetRequiredService<DataProcessor>();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();

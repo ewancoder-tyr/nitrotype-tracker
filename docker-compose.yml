@@ -35,7 +35,6 @@ services:
       - local
       - public
       - infra
-      - internet
 
   be-fetch:
     image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
