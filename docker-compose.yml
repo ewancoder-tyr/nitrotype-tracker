@@ -37,6 +37,22 @@ services:
       - infra
       - internet
 
+  be-fetch:
+    image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
+    container_name: ${PREFIX}nitrotype-tracker-be-fetch
+    restart: unless-stopped
+    mem_limit: 100m
+    mem_reservation: 75m
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - local
+      - infra
+      - internet
+
   postgres:
     image: postgres:17
     container_name: ${PREFIX}nitrotype-tracker-postgres

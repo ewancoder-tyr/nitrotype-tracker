@@ -11,8 +11,10 @@ on:
 env:
   PROJECT_NAME: nitrotype-tracker
   API_IMAGE: nitrotype-tracker-api
+  BE_FETCH_IMAGE: nitrotype-tracker-be-fetch
   WEB_IMAGE: nitrotype-tracker-web
   API_DOCKERFILE: backend/NitroType.Tracker.Api/Dockerfile
+  BE_FETCH_DOCKERFILE: be-fetch/Dockerfile
   WEB_DOCKERFILE: frontend/Dockerfile
   REGISTRY: ghcr.io
   BADGE_GIST_ID: 0184962696ef0364be7a3f491133f2f9
@@ -28,6 +30,7 @@ jobs:
       frontend_changed: ${{ steps.filter.outputs.frontend }}
       backend_changed: ${{ steps.filter.outputs.backend }}
       db_changed: ${{ steps.filter.outputs.db }}
+      be_fetch_changed: ${{ steps.filter.outputs.be_fetch_changed }}
 
     permissions:
       contents: read
@@ -51,6 +54,7 @@ jobs:
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
+            echo "be_fetch_changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if ! git diff --name-only $BEFORE_SHA HEAD > diff; then
@@ -58,6 +62,7 @@ jobs:
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
+            echo "be_fetch_changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if grep -q '^.github/workflows' diff; then
@@ -65,6 +70,7 @@ jobs:
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "db=true" >> $GITHUB_OUTPUT
+            echo "be_fetch_changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           if grep -q '^frontend/' diff; then
@@ -79,6 +85,9 @@ jobs:
             echo "DB files changed. Deploying database."
             echo "db=true" >> $GITHUB_OUTPUT
           fi
+          if grep -q '^be-fetch/' diff; then
+            echo "BE Fetch service changed. Deploying."
+            echo "be_fetch_changed=true" >> $GITHUB_OUTPUT
 
   generate-todos:
     name: Check TODOs
@@ -320,6 +329,62 @@ jobs:
           echo "Saving SHA tag: $SHA_TAG"
           echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
 
+  build-be-fetch:
+    name: Build BE Fetch service
+    runs-on: ubuntu-latest
+    #needs: test-api
+    needs: check-changed-files
+    if: needs.check-changed-files.outputs.be_fetch_changed == 'true'
+    outputs:
+      sha: ${{ steps.save.outputs.sha }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.REPO_USER }}/${{ env.BE_FETCH_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
+            type=sha
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: ./be-fetch
+          file: ${{ env.BE_FETCH_DOCKERFILE }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Save SHA tag for deployment
+        id: save
+        run: |
+          SHA_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep "sha-" | cut -d':' -f2)
+          echo "Saving SHA tag: $SHA_TAG"
+          echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
+
   test-web:
     name: Test Web
     runs-on: ubuntu-latest
@@ -505,12 +570,13 @@ jobs:
   deploy:
     name: Deploy production
     runs-on: ubuntu-latest
-    needs: [check-changed-files, build-api, build-web]
+    needs: [check-changed-files, build-api, build-web, build-be-fetch]
     if: |
       always() && !cancelled() && !failure() &&
       (github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))) &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
+        needs.check-changed-files.outputs.be_fetch_changed == 'true' ||
         needs.check-changed-files.outputs.frontend_changed == 'true' ||
         needs.check-changed-files.outputs.db_changed == 'true'
       )
@@ -538,6 +604,7 @@ jobs:
         env:
           DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
           API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          BE_FETCH_SHA_TAG: ${{ needs.build-be-fetch.outputs.sha }}
           WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
           PROJECT_NAME: ${{ env.PROJECT_NAME }}
         with:
@@ -546,20 +613,27 @@ jobs:
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
+          envs: DB_CHANGED,API_SHA_TAG,BE_FETCH_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
           script: |
             echo "DB_CHANGED: $DB_CHANGED"
             echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "BE_FETCH_SHA_TAG: $BE_FETCH_SHA_TAG"
             echo "WEB_SHA_TAG: $WEB_SHA_TAG"
+            echo "PROJECT_NAME: $PROJECT_NAME"
             cd /tmp/$PROJECT_NAME
             mv .env.prod .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/BE_FETCH_TAG=/BE_FETCH_TAG=$BE_FETCH_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             sed -i '/ports:/{N;d}' docker-compose.yml
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
               echo "API will not be deployed."
               DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $BE_FETCH_SHA_TAG ]; then
+              echo "BE Fetch will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^be-fetch$' | tr '\n' ' ')
             fi
             if [ -z $WEB_SHA_TAG ]; then
               echo "WEB will not be deployed."
@@ -571,19 +645,25 @@ jobs:
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose config --format json | jq -r '.networks["local"].name')
               docker compose stop api
+              docker compose stop be-fetch
               docker run --rm \
                 --network $NETWORK_NAME \
                 -v /tmp/$PROJECT_NAME/db/migrations:/db/migrations \
                 --env-file /data/$PROJECT_NAME/secrets.env \
                 amacneil/dbmate:latest --wait up
               if [ $? -ne 0 ]; then
-                echo "Migration failed, restarting old API container"
+                echo "Migration failed, restarting old backend containers"
+                docker compose start be-fetch
                 docker compose start api
                 exit 1
               fi
             fi
             if [ -z $API_SHA_TAG ]; then
-              echo "API is not being deployed, restarting old API container."
+              echo "API is not being deployed, restarting old container."
+              docker compose start api
+            fi
+            if [ -z $BE_FETCH_SHA_TAG ]; then
+              echo "BE FETCH is not being deployed, restarting old container."
               docker compose start api
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
@@ -592,12 +672,13 @@ jobs:
   deploy-develop:
     name: Deploy development
     runs-on: ubuntu-latest
-    needs: [check-changed-files, build-api, build-web]
+    needs: [check-changed-files, build-api, build-web, build-be-fetch]
     if: |
       always() && !cancelled() && !failure() &&
       github.ref == 'refs/heads/develop' &&
       (
         needs.check-changed-files.outputs.backend_changed == 'true' ||
+        needs.check-changed-files.outputs.be_fetch_changed == 'true' ||
         needs.check-changed-files.outputs.frontend_changed == 'true' ||
         needs.check-changed-files.outputs.db_changed == 'true'
       )
@@ -620,11 +701,12 @@ jobs:
           source: "db,docker-compose.yml,.env.dev"
           target: /tmp/dev-${{ env.PROJECT_NAME }}
 
-      - name: Deploy to DO
+      - name: Deploy to DEV server
         uses: appleboy/ssh-action@v1.0.3
         env:
           DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
           API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          BE_FETCH_SHA_TAG: ${{ needs.build-be-fetch.outputs.sha }}
           WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
           PROJECT_NAME: ${{ env.PROJECT_NAME }}
         with:
@@ -633,21 +715,27 @@ jobs:
           passphrase: ${{ secrets.PASSWORD_DEV }}
           key: ${{ secrets.KEY_DEV }}
           port: ${{ secrets.PORT_DEV }}
-          envs: DB_CHANGED,API_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
+          envs: DB_CHANGED,API_SHA_TAG,BE_FETCH_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
           script: |
             echo "DB_CHANGED: $DB_CHANGED"
             echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "BE_FETCH_SHA_TAG: $BE_FETCH_SHA_TAG"
             echo "WEB_SHA_TAG: $WEB_SHA_TAG"
             echo "PROJECT_NAME: $PROJECT_NAME"
             cd /tmp/dev-$PROJECT_NAME
             mv .env.dev .env
             sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/BE_FETCH_TAG=/BE_FETCH_TAG=$BE_FETCH_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             sed -i "s/#- admin/- admin/g" docker-compose.yml
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
               echo "API will not be deployed."
               DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^api$' | tr '\n' ' ')
+            fi
+            if [ -z $BE_FETCH_SHA_TAG ]; then
+              echo "BE Fetch will not be deployed."
+              DEPLOY_SERVICES=$(echo $DEPLOY_SERVICES | tr ' ' '\n' | grep -v '^be-fetch$' | tr '\n' ' ')
             fi
             if [ -z $WEB_SHA_TAG ]; then
               echo "WEB will not be deployed."
@@ -659,19 +747,25 @@ jobs:
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose config --format json | jq -r '.networks["local"].name')
               docker compose stop api
+              docker compose stop be-fetch
               docker run --rm \
                 --network $NETWORK_NAME \
                 -v /tmp/dev-$PROJECT_NAME/db/migrations:/db/migrations \
                 --env-file /data/dev-$PROJECT_NAME/secrets.env \
                 amacneil/dbmate:latest --wait up
               if [ $? -ne 0 ]; then
-                echo "Migration failed, restarting old API container"
+                echo "Migration failed, restarting old backend containers"
+                docker compose start be-fetch
                 docker compose start api
                 exit 1
               fi
             fi
             if [ -z $API_SHA_TAG ]; then
-              echo "API is not being deployed, restarting old API container."
+              echo "API is not being deployed, restarting old container."
+              docker compose start api
+            fi
+            if [ -z $BE_FETCH_SHA_TAG ]; then
+              echo "BE FETCH is not being deployed, restarting old container."
               docker compose start api
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
