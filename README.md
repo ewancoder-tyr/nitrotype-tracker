@@ -35,6 +35,7 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 ### Both backend and frontend
 
 - [x] [Rider IDE](https://www.jetbrains.com/rider)
+- [x] [GoLand](https://www.jetbrains.com/go)
 - [x] [SonarQube](https://www.sonarsource.com/products/sonarqube)
 - [x] [Stryker](https://stryker-mutator.io)
 - [ ] [Sign In with Google](https://developers.google.com/identity/gsi/web/guides/overview)
@@ -42,6 +43,7 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 ### Backend
 
 - [x] [.NET Core / C#](https://dotnet.microsoft.com)
+- [x] [GoLang](https://go.dev)
 - [x] [PostgreSQL](https://www.postgresql.org)
 - [x] [DbMate](https://github.com/amacneil/dbmate)
 - [x] [Seq](https://datalust.co/seq)
