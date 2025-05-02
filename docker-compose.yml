@@ -71,7 +71,8 @@ services:
       retries: 5
     networks:
       - local
-      #- admin # Disabled in production until needed.
+      #- admin    # Disabled in production until needed.
+      #- internet # Needed for development env to expose ports to host.
 
   web:
     image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}

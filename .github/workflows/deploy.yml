@@ -728,6 +728,7 @@ jobs:
             sed -i "s/BE_FETCH_TAG=/BE_FETCH_TAG=$BE_FETCH_SHA_TAG/g" .env
             sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
             sed -i "s/#- admin/- admin/g" docker-compose.yml
+            sed -i "s/#- internet/- internet/g" docker-compose.yml
             DEPLOY_SERVICES=$(docker compose config --services)
             if [ -z $API_SHA_TAG ]; then
               echo "API will not be deployed."
