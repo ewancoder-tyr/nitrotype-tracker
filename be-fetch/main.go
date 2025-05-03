@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 
@@ -19,6 +20,8 @@ import (
 )
 
 func main() {
+	podId := uuid.New().String()
+
 	seqApiKey := os.Getenv("SeqApiKey_Fetch")
 	seqUri := os.Getenv("SeqUri")
 	if seqApiKey == "" || seqUri == "" {
@@ -37,6 +40,9 @@ func main() {
 		slogseq.WithAPIKey(seqApiKey),
 		slogseq.WithBatchSize(50),
 		slogseq.WithFlushInterval(10*time.Second),
+		slogseq.WithGlobalAttrs(
+			slog.String("pod", podId),
+		),
 		slogseq.WithHandlerOptions(&slog.HandlerOptions{
 			Level:     slog.LevelDebug,
 			AddSource: true,
@@ -49,6 +55,8 @@ func main() {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 				Level:     slog.LevelDebug,
 				AddSource: true,
+			}).WithAttrs([]slog.Attr{
+				slog.String("pod", podId),
 			}),
 		),
 	)
