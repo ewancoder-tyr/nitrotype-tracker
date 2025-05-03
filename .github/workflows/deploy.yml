@@ -390,10 +390,13 @@ jobs:
           go-version-file: be-fetch/go.mod
 
       - name: Mutation testing
-        uses: go-gremlins/gremlins-action@v1
-        with:
-          version: latest
-          workdir: be-fetch
+        working-directory: be-fetch
+        run: |
+          go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.5.0
+          gremlins unleash > output
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat output >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   build-be-fetch:
     name: Build BE Fetch service
