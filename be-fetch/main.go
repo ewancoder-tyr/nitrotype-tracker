@@ -38,7 +38,8 @@ func main() {
 		slogseq.WithBatchSize(50),
 		slogseq.WithFlushInterval(10*time.Second),
 		slogseq.WithHandlerOptions(&slog.HandlerOptions{
-			Level: slog.LevelDebug,
+			Level:     slog.LevelDebug,
+			AddSource: true,
 		}))
 	defer seqHandler.Close()
 
@@ -46,7 +47,8 @@ func main() {
 		slogmulti.Fanout(
 			seqHandler,
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-				Level: slog.LevelDebug,
+				Level:     slog.LevelDebug,
+				AddSource: true,
 			}),
 		),
 	)
