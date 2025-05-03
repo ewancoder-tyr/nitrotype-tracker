@@ -65,7 +65,7 @@ jobs:
             echo "be_fetch_changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          if grep -q '^.github/workflows' diff; then
+          if grep -qE '^(.github/workflows)|(docker-compose)|(.env)' diff; then
             echo "Github deploy.yml has changed, deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
