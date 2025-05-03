@@ -47,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      cache:
+        condition: service_healthy
     networks:
       - local
       - infra
@@ -66,6 +68,27 @@ services:
       - /data/${VOLUME_ROOT}/secrets.env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - local
+      #- admin    # Disabled in production until needed.
+      #- internet # Needed for development env to expose ports to host.
+
+  cache:
+    image: valkey/valkey
+    container_name: ${PREFIX}nitrotype-tracker-cache
+    command: valkey-server --save 60 1
+    restart: unless-stopped
+    ports:
+      - ${CACHE_PORT}
+    mem_limit: 1g
+    mem_reservation: 750m
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
