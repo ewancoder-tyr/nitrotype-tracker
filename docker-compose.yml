@@ -38,7 +38,7 @@ services:
 
   be-fetch:
     image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
-    container_name: ${PREFIX}nitrotype-tracker-be-fetch
+    #container_name: ${PREFIX}nitrotype-tracker-be-fetch
     restart: unless-stopped
     mem_limit: 100m
     mem_reservation: 75m
@@ -53,6 +53,8 @@ services:
       - local
       - infra
       - internet
+    deploy:
+      replicas: ${BE_FETCH_REPLICAS}
 
   postgres:
     image: postgres:17
