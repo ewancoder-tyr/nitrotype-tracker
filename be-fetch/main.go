@@ -135,8 +135,6 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 			newHashStr := fmt.Sprintf("%d", newHash)
 
 			oldHashStr, err := rdb.Get(context.Background(), "tnt_team_data_hash:"+team).Result()
-			slog.Error("test")
-			slog.Error(oldHashStr)
 			if err != nil && err != redis.Nil {
 				slog.Error("test")
 				os.Exit(1)
