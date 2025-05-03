@@ -266,7 +266,7 @@ jobs:
           mkdir -p ./.sonar/scanner
           dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
 
-      - name: Build and analyze
+      - name: SonarQube scan
         env:
           SONAR_TOKEN: ${{ secrets.API_SONAR_TOKEN }}
         working-directory: backend
@@ -397,6 +397,27 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           cat output >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  test-be-fetch-sonarqube:
+    name: SonarQube static analysis
+    runs-on: ubuntu-latest
+    needs: test-be-fetch
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.BE_FETCH_SONAR_TOKEN }}
+        with:
+          projectBaseDir: be-fetch
 
   build-be-fetch:
     name: Build BE Fetch service
