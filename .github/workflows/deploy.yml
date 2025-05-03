@@ -330,12 +330,50 @@ jobs:
           echo "Saving SHA tag: $SHA_TAG"
           echo "sha=$SHA_TAG" >> $GITHUB_OUTPUT
 
+  test-be-fetch:
+    name: Test BE Fetch
+    runs-on: ubuntu-latest
+    needs: check-changed-files
+    if: needs.check-changed-files.outputs.be_fetch_changed == 'true'
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: be-fetch/go.mod
+
+      - name: Unit testing
+        working-directory: be-fetch
+        run: |
+          go test --cover > output
+          cat output >> $GITHUB_STEP_SUMMARY
+          echo COVERAGE=$(cat output | grep '% of statement' | awk '{print $2}') >> $GITHUB_ENV
+
+      # TODO: Consider adding icon/logo here.
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        if: '!cancelled()'
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.BADGE_GIST_ID }}
+          filename: ${{ env.BE_FETCH_IMAGE }}-coverage-${{ github.ref_name }}.json
+          label: BE Fetch Coverage
+          message: ${{ env.COVERAGE }}%
+          valColorRange: ${{ env.COVERAGE }}
+          maxColorRange: 80
+          minColorRange: 0
+
   build-be-fetch:
     name: Build BE Fetch service
     runs-on: ubuntu-latest
-    #needs: test-api
-    needs: check-changed-files
-    if: needs.check-changed-files.outputs.be_fetch_changed == 'true'
+    needs: test-be-fetch
     outputs:
       sha: ${{ steps.save.outputs.sha }}
 
