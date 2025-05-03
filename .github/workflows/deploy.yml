@@ -353,7 +353,9 @@ jobs:
         working-directory: be-fetch
         run: |
           go test --cover > output
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           cat output >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo COVERAGE=$(cat output | grep '% of statement' | awk '{print $2}') >> $GITHUB_ENV
 
       # TODO: Consider adding icon/logo here.

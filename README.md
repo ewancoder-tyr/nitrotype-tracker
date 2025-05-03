@@ -16,6 +16,7 @@ Shows league / season racing statistics.
 ![status](https://img.shields.io/github/last-commit/ewancoder/nitrotype-tracker/main)
 ![diff](https://img.shields.io/github/commits-difference/ewancoder/nitrotype-tracker?base=main&head=main&logo=git&label=diff&color=orange)
 ![api-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-api-coverage-main.json)
+![be-fetch-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-be-fetch-coverage-main.json)
 ![web-ui-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-web-coverage-main.json)
 ![todos](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-todos-main.json)
 
@@ -25,6 +26,7 @@ Shows league / season racing statistics.
 ![status](https://img.shields.io/github/last-commit/ewancoder/nitrotype-tracker/develop)
 ![diff](https://img.shields.io/github/commits-difference/ewancoder/nitrotype-tracker?base=main&head=develop&logo=git&label=diff&color=orange)
 ![api-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-api-coverage-develop.json)
+![be-fetch-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-be-fetch-coverage-develop.json)
 ![web-ui-coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-web-coverage-develop.json)
 ![todos](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/nitrotype-tracker-todos-develop.json)
 
