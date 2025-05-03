@@ -7,11 +7,11 @@ import (
 	"net/http"
 )
 
-func FetchTeamData(team string) ([]byte, error) {
+func FetchTeamData(nitroTypeBaseUri string, team string) ([]byte, error) {
 	slog.Info("Fetching team data from NitroType API", "team", team)
 
 	client := &http.Client{}
-	url := fmt.Sprintf("https://nitrotype.com/api/v2/teams/%s", team)
+	url := fmt.Sprintf("%s/api/v2/teams/%s", nitroTypeBaseUri, team)
 
 	resp, err := client.Get(url)
 	err = isSuccess(resp, err)

@@ -121,7 +121,7 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 				continue
 			}
 
-			json, err := FetchTeamData(team)
+			json, err := FetchTeamData("https://nitrotype.com", team)
 			if err != nil {
 				slog.Error("Failed to fetch data from API", "error", err)
 				mutex.Unlock()
