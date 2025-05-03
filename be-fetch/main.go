@@ -117,7 +117,7 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 		for _, team := range teamInfos {
 			mutex := rs.NewMutex("tnt_team_lock:"+team, redsync.WithExpiry(4*time.Minute))
 			if err := mutex.TryLock(); err != nil {
-				slog.Debug("Failed to acquire Redis lock, skipping", "error", err, "team", team)
+				slog.Debug("Could not acquire team lock, skipping", "error", err, "team", team)
 				continue
 			}
 
