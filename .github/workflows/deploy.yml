@@ -343,7 +343,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -371,6 +370,30 @@ jobs:
           valColorRange: ${{ env.COVERAGE }}
           maxColorRange: 80
           minColorRange: 0
+
+  test-be-fetch-mutation:
+    name: BE Fetch mutation testing
+    runs-on: ubuntu-latest
+    needs: test-be-fetch
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: be-fetch/go.mod
+
+      - name: Mutation testing
+        uses: go-gremlins/gremlins-action@v1
+        with:
+          version: latest
+          workdir: be-fetch
 
   build-be-fetch:
     name: Build BE Fetch service
