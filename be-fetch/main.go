@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	slogmulti "github.com/samber/slog-multi"
 	"hash/fnv"
 	"log/slog"
@@ -9,7 +10,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/sokkalf/slog-seq"
 )
 
@@ -21,17 +26,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	redisUrl := os.Getenv("CacheConnectionString")
+	if redisUrl == "" {
+		slog.Error("Redis connection string is not set")
+		os.Exit(1)
+	}
+
 	_, seqHandler := slogseq.NewLogger(
 		seqUri+"/ingest/clef",
 		slogseq.WithAPIKey(seqApiKey),
 		slogseq.WithBatchSize(50),
-		slogseq.WithFlushInterval(10*time.Second))
+		slogseq.WithFlushInterval(10*time.Second),
+		slogseq.WithHandlerOptions(&slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
 	defer seqHandler.Close()
 
 	logger := slog.New(
 		slogmulti.Fanout(
 			seqHandler,
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}),
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}),
 		),
 	)
 
@@ -50,44 +66,55 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := pgx.ConnectConfig(context.Background(), config)
+	db, err := pgx.ConnectConfig(context.Background(), config)
 	if err != nil {
 		slog.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer conn.Close(context.Background())
+	defer db.Close(context.Background())
 
-	err = conn.Ping(context.Background())
+	err = db.Ping(context.Background())
 	if err != nil {
 		slog.Error("Failed to ping the database", "error", err)
 		os.Exit(1)
 	}
 
-	runLoop(conn)
+	client := redis.NewClient(&redis.Options{
+		Addr: redisUrl,
+		DB:   1,
+	})
+	defer client.Close()
+
+	err = client.Ping(context.Background()).Err()
+	if err != nil {
+		slog.Error("Failed to ping Redis", "error", err)
+		os.Exit(1)
+	}
+
+	pool := goredis.NewPool(client)
+	rs := redsync.New(pool)
+
+	runLoop(db, client, rs)
 }
 
-type TeamInfo struct {
-	name          string
-	lastQueryTime time.Time
-	hash          uint32
-}
-
-func runLoop(conn *pgx.Conn) {
+func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 	// TODO: Implement changing this list.
-	teamInfos := []TeamInfo{
-		{name: "KECATS", lastQueryTime: time.Time{}, hash: 0},
-		{name: "SSH", lastQueryTime: time.Time{}, hash: 0},
+	teamInfos := []string{
+		"KECATS", "SSH",
 	}
 
 	for {
-		for i, team := range teamInfos {
-			if time.Since(team.lastQueryTime) < 5*time.Minute {
+		for _, team := range teamInfos {
+			mutex := rs.NewMutex("tnt_team_lock:"+team, redsync.WithExpiry(4*time.Minute))
+			if err := mutex.TryLock(); err != nil {
+				slog.Debug("Failed to acquire Redis lock, skipping", "error", err, "team", team)
 				continue
 			}
 
-			json, err := FetchTeamData(team.name)
+			json, err := FetchTeamData(team)
 			if err != nil {
 				slog.Error("Failed to fetch data from API", "error", err)
+				mutex.Unlock()
 				continue
 			}
 
@@ -95,26 +122,41 @@ func runLoop(conn *pgx.Conn) {
 			hasher := fnv.New32a()
 			_, _ = hasher.Write(json)
 			newHash := hasher.Sum32()
+			newHashStr := fmt.Sprintf("%d", newHash)
 
-			if newHash == team.hash {
-				slog.Info("Hash did not change for the team, skipping saving the data", "team", team.name)
-				teamInfos[i].lastQueryTime = time.Now().UTC()
+			oldHashStr, err := rdb.Get(context.Background(), "tnt_team_data_hash:"+team).Result()
+			slog.Error("test")
+			slog.Error(oldHashStr)
+			if err != nil && err != redis.Nil {
+				slog.Error("test")
+				os.Exit(1)
+				slog.Debug("Did not get hash value from redis, creating a new one", "error", err)
+			}
+
+			if newHashStr == oldHashStr {
+				slog.Info("Hash did not change for the team, skipping saving the data", "team", team)
 				continue
 			}
 
-			err = StoreTeamData(conn, team.name, json)
+			err = StoreTeamData(db, team, json)
 			if err != nil {
 				slog.Error("Failed to store data in the database", "error", err)
+				mutex.Unlock()
 				continue
 			}
 
-			teamInfos[i].lastQueryTime = time.Now().UTC()
-			teamInfos[i].hash = newHash
-			slog.Info("Successfully finished processing (getting/saving) team data", "team", team.name)
+			err = rdb.Set(context.Background(), "tnt_team_data_hash:"+team, newHashStr, 0).Err()
+			if err != nil {
+				slog.Error("Failed to store hash in Redis", "error", err)
+				mutex.Unlock()
+				continue
+			}
+
+			slog.Info("Successfully finished processing (getting/saving) team data", "team", team)
 
 			time.Sleep(time.Duration(1500+rand.Intn(2500)) * time.Millisecond)
 		}
 
-		time.Sleep(time.Duration(5000+rand.Intn(10000)) * time.Millisecond)
+		time.Sleep(time.Duration(10000+rand.Intn(20000)) * time.Millisecond)
 	}
 }
