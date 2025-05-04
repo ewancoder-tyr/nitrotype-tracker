@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using NitroType.Tracker.Domain;
 using Npgsql;
+using StackExchange.Redis;
 using Tyr.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,11 @@ await builder.ConfigureTyrApplicationBuilderAsync(config);
 //builder.Services.AddSingleton<RawDataRepository>();
 //builder.Services.AddSingleton<SmartDataRetriever>();
 builder.Services.AddSingleton<DataProcessor>();
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    provider => ConnectionMultiplexer.Connect(
+        provider.GetRequiredService<IConfiguration>()["CacheConnectionString"]
+            ?? throw new InvalidOperationException("Cache connection string is not set.")));
 
 builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
 {
