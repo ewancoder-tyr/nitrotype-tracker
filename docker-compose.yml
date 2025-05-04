@@ -31,7 +31,7 @@ services:
 
   api:
     image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
-    container_name: ${PREFIX}nitrotype-tracker-api
+    #container_name: ${PREFIX}nitrotype-tracker-api
     volumes:
       - /data/${VOLUME_ROOT}/dataprotection:/app/dataprotection
       - /root/dp.pfx:/app/dp.pfx
@@ -47,6 +47,8 @@ services:
       - local
       - public
       - infra
+    deploy:
+      replicas: ${API_REPLICAS}
 
   be-fetch:
     image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
