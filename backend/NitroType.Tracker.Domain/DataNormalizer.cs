@@ -59,7 +59,7 @@ public sealed class DataNormalizer
 
     public async Task ProcessTeamDataAsync()
     {
-        var db = _redis.GetDatabase();
+        var db = _redis.GetDatabase(1);
         var lockKey = "tnt_normalization_lock";
         var lockValue = "locked";
         var acquired = await db.LockTakeAsync(lockKey, lockValue, TimeSpan.FromMinutes(10))
