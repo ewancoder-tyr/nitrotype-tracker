@@ -123,14 +123,14 @@ public sealed class NormalizedDataRepository
         WITH LatestStats AS (
             SELECT DISTINCT ON (username) 
                 username, team, typed, errors, name, races_played, timestamp, secs
-            FROM normalized_data
+            FROM normalized_data_v2
             WHERE team = @team
             ORDER BY username, timestamp DESC
         ),
         StartingStats AS (
             SELECT DISTINCT ON (username) 
                 username, typed, errors, races_played, secs
-            FROM normalized_data
+            FROM normalized_data_v2
             WHERE team = @team 
                 AND timestamp >= @startDate
             ORDER BY username, timestamp ASC
@@ -138,7 +138,7 @@ public sealed class NormalizedDataRepository
         DayAgoStats AS (
             SELECT DISTINCT ON (username) 
                 username, races_played as races_played_day_ago
-            FROM normalized_data 
+            FROM normalized_data_v2
             WHERE team = @team 
                 AND timestamp >= NOW() - INTERVAL '24 hours'
             ORDER BY username, timestamp ASC
