@@ -1,3 +1,5 @@
+name: ${PREFIX}nitrotype-tracker
+
 networks:
   internet:
   local:
