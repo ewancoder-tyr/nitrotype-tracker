@@ -52,8 +52,8 @@ public sealed class NormalizedDataRepository
                 ON CONFLICT (username, timestamp) DO NOTHING;
                 """;
 
-            _logger.LogDebug($"Successfully inserted {count} records");
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            _logger.LogDebug($"Successfully inserted {count} records");
         }
         catch (Exception e)
         {

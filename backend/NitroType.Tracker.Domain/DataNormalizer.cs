@@ -102,8 +102,15 @@ public sealed class DataNormalizer
 
                 try
                 {
-                    await _normalizedRepo.SaveAsync(values)
-                        .ConfigureAwait(false);
+                    if (values.Any())
+                    {
+                        await _normalizedRepo.SaveAsync(values)
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("API data is missing, skipping entry {Id}", item.Id);
+                    }
 
                     await _normalizedRepo.UpdateLastProcessedIdAsync(item.Id)
                         .ConfigureAwait(false);
