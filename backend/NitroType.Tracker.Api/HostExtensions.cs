@@ -234,6 +234,7 @@ public static class HostExtensions
                     .MinimumLevel.Override(config.LogVerboseNamespace, LogEventLevel.Verbose)
                     .WriteTo.Console(outputTemplate: ConsoleLogOutputTemplate)
                     .Enrich.FromLogContext()
+                    .Enrich.WithProperty("Pod", Guid.NewGuid().ToString())
                     .ReadFrom.Configuration(context.Configuration);
 
                 if (!config.IsDebug)
