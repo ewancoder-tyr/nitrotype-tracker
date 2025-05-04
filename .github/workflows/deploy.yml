@@ -756,7 +756,8 @@ jobs:
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
-            docker compose cp networks.prod.yml doneman:/config.yml
+            docker compose cp docker-compose.yml doneman:/docker-compose.yml
+            docker compose cp .env doneman:/.env
             docker compose restart doneman
 
   deploy-develop:
@@ -861,5 +862,6 @@ jobs:
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
-            docker compose cp networks.dev.yml doneman:/config.yml
+            docker compose cp docker-compose.yml doneman:/docker-compose.yml
+            docker compose cp .env doneman:/.env
             docker compose restart doneman
