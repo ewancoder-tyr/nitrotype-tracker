@@ -6,7 +6,7 @@ public class DataNormalizationConverterTests
     public void ShouldUseProvidedTimestamp()
     {
         var fixture = new Fixture();
-        var seasonMember = fixture.Create<SeasonMember>();
+        var seasonMember = fixture.Create<Member>();
 
         var team = "KECATS";
         var timestamp = DateTime.UtcNow;
