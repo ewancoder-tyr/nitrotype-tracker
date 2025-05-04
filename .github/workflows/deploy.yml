@@ -54,9 +54,10 @@ jobs:
           LAST_RUN=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs?status=completed&branch=$BRANCH&per_page=2")
-          LAST_CONCLUSION=$(echo "$LAST_RUN" | jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[1].conclusion')
+          LAST_CONCLUSION=$(echo "$LAST_RUN" | jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0].conclusion')
           echo "Checking branch $BRANCH deployments"
           echo "Conclusion is: $LAST_CONCLUSION"
+          echo "GitHub data: $LAST_RUN"
           if [ "$LAST_CONCLUSION" != "null" ] && [ "$LAST_CONCLUSION" != "success" ]; then
             echo "Last run failed on the current branch. Deploying everything."
             echo "frontend=true" >> $GITHUB_OUTPUT
