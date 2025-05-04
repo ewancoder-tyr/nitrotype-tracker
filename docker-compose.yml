@@ -17,6 +17,14 @@ networks:
     external: true
 
 services:
+  doneman:
+    image: ewancoder/doneman:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    mem_limit: 100m
+    mem_reservation: 75m
+
   api:
     image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
     container_name: ${PREFIX}nitrotype-tracker-api

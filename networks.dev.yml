@@ -1,0 +1,35 @@
+containers:
+  - name: dev-nitrotype-tracker-api
+    networks:
+      - tyr-proxy-internal
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-be-fetch-1
+    networks:
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-be-fetch-2
+    networks:
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-be-fetch-3
+    networks:
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-be-fetch-4
+    networks:
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-be-fetch-5
+    networks:
+      - tyr-infrastructure-internal
+  - name: dev-nitrotype-tracker-postgres
+    networks:
+      - tyr-administration-internal
+  - name: dev-nitrotype-tracker-cache
+    networks:
+      - tyr-administration-internal
+  - name: dev-nitrotype-tracker-web-1
+    networks:
+      - tyr-proxy-internal
+  - name: dev-nitrotype-tracker-web-2
+    networks:
+      - tyr-proxy-internal
+  - name: dev-nitrotype-tracker-web-3
+    networks:
+      - tyr-proxy-internal

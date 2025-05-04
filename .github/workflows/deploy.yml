@@ -684,7 +684,7 @@ jobs:
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          source: "db,docker-compose.yml,.env.prod"
+          source: "db,docker-compose.yml,.env.prod,networks.prod.yml"
           target: /tmp/${{ env.PROJECT_NAME }}
 
       - name: Deploy to DO
@@ -756,6 +756,7 @@ jobs:
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
+            docker compose cp networks.prod.yml doneman:/config.yml
 
   deploy-develop:
     name: Deploy development
@@ -786,7 +787,7 @@ jobs:
           passphrase: ${{ secrets.PASSWORD_DEV }}
           key: ${{ secrets.KEY_DEV }}
           port: ${{ secrets.PORT_DEV }}
-          source: "db,docker-compose.yml,.env.dev"
+          source: "db,docker-compose.yml,.env.dev,networks.dev.yml"
           target: /tmp/dev-${{ env.PROJECT_NAME }}
 
       - name: Deploy to DEV server
@@ -859,3 +860,4 @@ jobs:
             fi
             echo "Deploying the following services: $DEPLOY_SERVICES"
             docker compose up -d $DEPLOY_SERVICES
+            docker compose cp networks.dev.yml doneman:/config.yml
