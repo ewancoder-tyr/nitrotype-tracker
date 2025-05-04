@@ -5,7 +5,7 @@ namespace NitroType.Tracker.Domain;
 
 public static class DataNormalizationConverter
 {
-    public static NormalizedPlayerData Convert(SeasonMember seasonMember, string team, DateTime timestamp)
+    public static NormalizedPlayerData Convert(Member seasonMember, string team, DateTime timestamp)
     {
         if (seasonMember.Username is null)
             throw new ArgumentException("Username is null.");
@@ -85,20 +85,20 @@ public sealed class DataNormalizer
                     break;
                 }
 
-                if (item.Data.Results is null || item.Data.Results.Season is null)
+                if (item.Data.Results is null || item.Data.Results.Members is null)
                 {
                     _logger.LogWarning("Saved raw data was null for {Id} record", item.Id);
                     continue;
                 }
 
-                var values = item.Data.Results.Season
-                    .Where(seasonData =>
-                        seasonData.Username is not null
-                        && seasonData.Typed.HasValue
-                        && seasonData.Errs.HasValue
-                        && seasonData.RacesPlayed.HasValue
-                        && seasonData.Secs.HasValue)
-                    .Select(seasonData => DataNormalizationConverter.Convert(seasonData, item.Team, item.Timestamp));
+                var values = item.Data.Results.Members
+                    .Where(memberData =>
+                        memberData.Username is not null
+                        && memberData.Typed.HasValue
+                        && memberData.Errs.HasValue
+                        && memberData.RacesPlayed.HasValue
+                        && memberData.Secs.HasValue)
+                    .Select(member => DataNormalizationConverter.Convert(member, item.Team, item.Timestamp));
 
                 try
                 {

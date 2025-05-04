@@ -46,7 +46,7 @@ public sealed class NormalizedDataRepository
             }
 
             cmd.CommandText = $"""
-                INSERT INTO normalized_data
+                INSERT INTO normalized_data_v2
                 (username, team, typed, errors, name, races_played, timestamp, secs)
                 VALUES {valuesBuilder}
                 ON CONFLICT (username, timestamp) DO NOTHING;
@@ -74,7 +74,7 @@ public sealed class NormalizedDataRepository
 
         try
         {
-            cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 1;";
+            cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 2;";
             var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
             return (long)lastId;
         }
@@ -96,7 +96,7 @@ public sealed class NormalizedDataRepository
                 UPDATE processing_state 
                 SET last_processed_id = @newId, 
                     last_updated = CURRENT_TIMESTAMP 
-                WHERE id = 1;
+                WHERE id = 2;
                 """;
 
             cmd.Parameters.AddWithValue("@newId", newId);
