@@ -41,6 +41,7 @@ jobs:
         with:
           fetch-depth: ${{ env.CHECK_FETCH_DEPTH }}
 
+      # TODO: Filter out CURRENT deployment by deployment ID or by something, whech checking last deployment status.
       - name: Check if files changed
         id: filter
         run: |
