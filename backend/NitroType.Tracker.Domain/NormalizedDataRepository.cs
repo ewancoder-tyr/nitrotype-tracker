@@ -76,7 +76,9 @@ public sealed class NormalizedDataRepository
         {
             cmd.CommandText = "SELECT last_processed_id FROM processing_state WHERE id = 2;";
             var lastId = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-            return (long)lastId;
+            var id = Convert.ToInt64(lastId ?? 0);
+
+            return id;
         }
         finally
         {
