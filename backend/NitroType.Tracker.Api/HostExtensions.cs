@@ -113,6 +113,7 @@ public sealed record TyrHostConfiguration(
 
 public static class HostExtensions
 {
+    public static readonly string PodId = Guid.NewGuid().ToString();
     public static readonly string ConsoleLogOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}";
     public static async ValueTask ConfigureTyrApplicationBuilderAsync(
         this WebApplicationBuilder builder, TyrHostConfiguration config)
@@ -234,7 +235,7 @@ public static class HostExtensions
                     .MinimumLevel.Override(config.LogVerboseNamespace, LogEventLevel.Verbose)
                     .WriteTo.Console(outputTemplate: ConsoleLogOutputTemplate)
                     .Enrich.FromLogContext()
-                    .Enrich.WithProperty("Pod", Guid.NewGuid().ToString())
+                    .Enrich.WithProperty("Pod", PodId)
                     .ReadFrom.Configuration(context.Configuration);
 
                 if (!config.IsDebug)
@@ -306,6 +307,8 @@ public static class HostExtensions
             .WithTags("Diagnostics")
             .WithSummary("Healthcheck")
             .WithDescription("Responds with 200 when healthy");
+
+        app.MapGet("/pod", () => PodId);
 
         // Add diagnostics endpoint.
         app.MapGet("/diag", () => DateTime.UtcNow)
