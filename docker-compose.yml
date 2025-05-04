@@ -26,6 +26,8 @@ services:
     restart: unless-stopped
     mem_limit: 100m
     mem_reservation: 75m
+    environment:
+      - NETWORK_PATTERN=^tyr
 
   api:
     image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
