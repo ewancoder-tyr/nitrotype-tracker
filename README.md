@@ -74,7 +74,7 @@ This is the list of technologies used in every TyR pet project. Unchecked means 
 - [x] [Bash](https://www.gnu.org/software/bash)
 - [x] [GIT](https://git-scm.com)
 - [x] [Github Actions](https://github.com/features/actions)
-- [x] [Docker / Compose](https://www.docker.com)
+- [x] [Docker](https://www.docker.com) / [Compose](https://docs.docker.com/compose) / [Swarm](https://docs.docker.com/engine/swarm)
 - [x] [GitHub Container Registry](https://docs.github.com/en/packages)
 - [x] [Shields.io](https://shields.io)
 - [x] [Digital Ocean](https://www.digitalocean.com)
