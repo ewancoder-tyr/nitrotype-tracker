@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
+using StackExchange.Redis;
 
 // ReSharper disable once CheckNamespace
 namespace Tyr.Framework;
@@ -33,6 +34,7 @@ public sealed class GoogleUserProvider(IHttpContextAccessor httpContextAccessor)
 }
 
 public sealed record TyrHostConfiguration(
+    string? CacheConnectionString,
     string DataProtectionKeysPath,
     string DataProtectionCertPath,
     string DataProtectionCertPassword,
@@ -44,12 +46,16 @@ public sealed record TyrHostConfiguration(
     string MachineAuthenticationAuthority,
     string SeqUri,
     string SeqApiKey,
-    string LogVerboseNamespace,
+    string UniqueAppName,
     IEnumerable<string> CorsOrigins,
     bool UseTyrCorsOrigins,
     string Environment)
 {
     public bool IsDebug { get; private init; }
+
+    public bool StoreDataProtectionKeysOnCache { get; private init; } = CacheConnectionString is not null;
+
+    public string UniqueAppKey => $"{Environment}_{UniqueAppName}";
 
     /// <summary>
     /// Mount /app/dataprotection to dataprotection folder with keys.<br />
@@ -79,8 +85,13 @@ public sealed record TyrHostConfiguration(
         if (environment != "Production")
             authCookieName = $"{authCookieName}_{environment}";
 
+        var cacheConnectionString = TryReadConfig("CacheConnectionString", configuration);
+        if (cacheConnectionString is not null)
+            cacheConnectionString += ",abortConnect=false,defaultDatabase=1";
+
         // TODO: Implement cookies authentication for typingrealm.org too.
         return new(
+            cacheConnectionString,
             DataProtectionKeysPath: "/app/dataprotection",
             DataProtectionCertPath: "dp.pfx",
             DataProtectionCertPassword: isDebug ? string.Empty : ReadConfig("DpCertPassword", configuration),
@@ -92,7 +103,7 @@ public sealed record TyrHostConfiguration(
             MachineAuthenticationAuthority: TryReadConfig("MachineAuthenticationAuthority", configuration) ?? "https://auth.typingrealm.com",
             SeqUri: isDebug ? string.Empty : ReadConfig("SeqUri", configuration),
             SeqApiKey: isDebug ? string.Empty : ReadConfig("SeqApiKey", configuration),
-            LogVerboseNamespace: appNamespace,
+            UniqueAppName: appNamespace,
             CorsOrigins: corsOrigins?.Split(';') ?? [],
             UseTyrCorsOrigins: useTyrCorsOrigins,
             Environment: environment)
@@ -112,6 +123,7 @@ public sealed record TyrHostConfiguration(
     }
 }
 
+// TODO: When Redis is required for host - ensure it doesn't start without valid environment variable.
 public static class HostExtensions
 {
     public static readonly string PodId = Guid.NewGuid().ToString();
@@ -122,14 +134,32 @@ public static class HostExtensions
         // Add OpenAPI documentation.
         builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSchemeTransformer>());
 
+        // Add caching.
+        IConnectionMultiplexer? redis = null;
+        if (config.CacheConnectionString is not null)
+        {
+            redis = await ConnectionMultiplexer.ConnectAsync(config.CacheConnectionString)
+                .ConfigureAwait(false);
+
+            builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+        }
+
         // Data protection, needed for Cookie authentication.
         if (!config.IsDebug)
         {
             var certBytes = await File.ReadAllBytesAsync(config.DataProtectionCertPath).ConfigureAwait(false);
             var cert = X509CertificateLoader.LoadPkcs12(certBytes, config.DataProtectionCertPassword);
-            builder.Services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo(config.DataProtectionKeysPath))
-                .ProtectKeysWithCertificate(cert);
+
+            var dpBuilder = builder.Services.AddDataProtection();
+
+            if (config.StoreDataProtectionKeysOnCache && redis is not null)
+            {
+                dpBuilder = dpBuilder.PersistKeysToStackExchangeRedis(redis, $"{config.UniqueAppKey}_dataprotection");
+            }
+            else
+                dpBuilder = dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(config.DataProtectionKeysPath));
+
+            dpBuilder.ProtectKeysWithCertificate(cert);
         }
 
         // CORS.
@@ -233,7 +263,7 @@ public static class HostExtensions
                 seqConfig
                     .MinimumLevel.Information()
                     .MinimumLevel.Override("Tyr", LogEventLevel.Verbose)
-                    .MinimumLevel.Override(config.LogVerboseNamespace, LogEventLevel.Verbose)
+                    .MinimumLevel.Override(config.UniqueAppName, LogEventLevel.Verbose)
                     .WriteTo.Console(outputTemplate: ConsoleLogOutputTemplate)
                     .Enrich.FromLogContext()
                     .Enrich.WithProperty("Pod", PodId)

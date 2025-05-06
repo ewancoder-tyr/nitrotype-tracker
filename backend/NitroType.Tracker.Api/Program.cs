@@ -23,15 +23,6 @@ await builder.ConfigureTyrApplicationBuilderAsync(config);
 //builder.Services.AddSingleton<SmartDataRetriever>();
 builder.Services.AddSingleton<DataProcessor>();
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    provider =>
-    {
-        var connectionString = provider.GetRequiredService<IConfiguration>()["CacheConnectionString"]
-            ?? throw new InvalidOperationException("Cache connection string is not set.");
-
-        return ConnectionMultiplexer.Connect(connectionString + ",abortConnect=false");
-    });
-
 builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
 {
     var connectionString = provider.GetRequiredService<IConfiguration>()["DbConnectionString"]
