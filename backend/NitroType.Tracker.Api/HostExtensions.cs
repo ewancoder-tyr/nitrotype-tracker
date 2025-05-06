@@ -79,6 +79,7 @@ public sealed record TyrHostConfiguration(
         if (environment != "Production")
             authCookieName = $"{authCookieName}_{environment}";
 
+        // TODO: Implement cookies authentication for typingrealm.org too.
         return new(
             DataProtectionKeysPath: "/app/dataprotection",
             DataProtectionCertPath: "dp.pfx",
@@ -267,7 +268,10 @@ public static class HostExtensions
         }
 
         if (config.UseTyrCorsOrigins)
+        {
             origins.Add("https://*.typingrealm.com");
+            origins.Add("https://*.typingrealm.org");
+        }
 
         origins.AddRange(config.CorsOrigins);
 
