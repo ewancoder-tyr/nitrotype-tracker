@@ -33,7 +33,6 @@ services:
     image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
     #container_name: ${PREFIX}nitrotype-tracker-api
     volumes:
-      - /data/${VOLUME_ROOT}/dataprotection:/app/dataprotection
       - /root/dp.pfx:/app/dp.pfx
     restart: unless-stopped
     mem_limit: 1g
