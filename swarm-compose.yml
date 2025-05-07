@@ -91,6 +91,7 @@ services:
       - public
       - infra
     deploy:
+      endpoint_mode: dnsrr
       replicas: ${API_REPLICAS}
       resources:
         limits:
@@ -127,6 +128,7 @@ services:
     networks:
       - public
     deploy:
+      endpoint_mode: dnsrr
       replicas: ${WEB_REPLICAS}
       resources:
         limits:
