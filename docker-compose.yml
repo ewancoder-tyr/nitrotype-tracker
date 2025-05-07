@@ -1,3 +1,14 @@
+# TODO for Swarm:
+# 1. Move Memory limits to resources
+# 2. Manually export $(cat .env | xargs)
+# 3. Remove depends_on
+# 4. Remove root Name property (maybe use it as a stack name)
+#
+# Caveats:
+# 1. Network name is stackname_networkname
+# 2. Named networks stay as is (bridged, dev-nitrotype-tracker-local-internal)
+# 3. Non-external network names should be unique to not collide with already existing on worker nodes
+
 name: ${PREFIX}nitrotype-tracker
 
 networks:

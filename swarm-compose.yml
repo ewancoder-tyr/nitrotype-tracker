@@ -1,0 +1,138 @@
+# Manually export $(cat .env | xargs)
+# Add tag to every service (currently deployed for missing)
+# docker stack deploy dev-nitrotype-tracker --compose-file docker-compose.yml
+# - need to check whether this upgrades services automatically or I need to do some kind of pull.
+
+networks:
+  internet:
+  local:
+    name: swarm-${PREFIX}nitrotype-tracker-local-internal
+    attachable: true # So that we can attach to the database for deployment.
+    driver: overlay
+    internal: true
+  public:
+    name: tyr-proxy-internal
+    driver: overlay
+    external: true
+  infra:
+    name: tyr-infrastructure-internal
+    driver: overlay
+    external: true
+  admin:
+    name: tyr-administration-internal
+    driver: overlay
+    external: true
+
+services:
+  postgres:
+    image: postgres:17
+    volumes:
+      - /data/${VOLUME_ROOT}/postgres:/var/lib/postgresql/data
+    ports:
+      - ${POSTGRES_PORT}
+    restart: unless-stopped
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - local
+      #- admin    # Disabled in production until needed.
+      #- internet # Needed for development env to expose ports to host.
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 750m
+      placement:
+        constraints:
+          - ${SWARM_INFRA_CONSTRAINT}
+
+  cache:
+    image: valkey/valkey
+    command: valkey-server --save 60 1
+    restart: unless-stopped
+    ports:
+      - ${CACHE_PORT}
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - local
+      #- admin    # Disabled in production until needed.
+      #- internet # Needed for development env to expose ports to host.
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 750m
+      placement:
+        constraints:
+          - ${SWARM_INFRA_CONSTRAINT}
+
+  api:
+    image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
+    volumes:
+      - /root/dp.pfx:/app/dp.pfx
+    restart: unless-stopped
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    networks:
+      - local
+      - public
+      - infra
+    deploy:
+      replicas: ${API_REPLICAS}
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 750m
+      placement:
+        constraints:
+          - ${SWARM_SERVICE_CONSTRAINT}
+
+  be-fetch:
+    image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
+    restart: unless-stopped
+    env_file:
+      - /data/${VOLUME_ROOT}/secrets.env
+    networks:
+      - local
+      - infra
+      - internet
+    deploy:
+      replicas: ${BE_FETCH_REPLICAS}
+      resources:
+        limits:
+          memory: 100m
+        reservations:
+          memory: 75m
+      placement:
+        constraints:
+          - ${SWARM_SERVICE_CONSTRAINT}
+
+  web:
+    image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}
+    restart: unless-stopped
+    networks:
+      - public
+    deploy:
+      replicas: ${WEB_REPLICAS}
+      resources:
+        limits:
+          memory: 100m
+        reservations:
+          memory: 75m
+      placement:
+        constraints:
+          - ${SWARM_SERVICE_CONSTRAINT}

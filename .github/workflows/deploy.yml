@@ -785,6 +785,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check-changed-files, build-api, build-web, build-be-fetch]
     if: |
+      false &&
       always() && !cancelled() && !failure() &&
       github.ref == 'refs/heads/develop' &&
       (
@@ -885,3 +886,114 @@ jobs:
             docker compose cp .env doneman:/.env
             docker compose cp docker-compose.yml doneman:/docker-compose.yml
             docker compose restart doneman
+
+  deploy-develop-swarm:
+    name: Deploy development in Swarm mode
+    runs-on: ubuntu-latest
+    needs: [check-changed-files, build-api, build-web, build-be-fetch]
+    if: |
+      always() && !cancelled() && !failure() &&
+      github.ref == 'refs/heads/develop' &&
+      (
+        needs.check-changed-files.outputs.backend_changed == 'true' ||
+        needs.check-changed-files.outputs.be_fetch_changed == 'true' ||
+        needs.check-changed-files.outputs.frontend_changed == 'true' ||
+        needs.check-changed-files.outputs.db_changed == 'true'
+      )
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSWORD }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          source: "db,swarm-compose.yml,.env.dev"
+          target: /tmp/dev-${{ env.PROJECT_NAME }}
+
+      - name: Deploy to DEV
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_CHANGED: ${{ needs.check-changed-files.outputs.db_changed }}
+          API_SHA_TAG: ${{ needs.build-api.outputs.sha }}
+          BE_FETCH_SHA_TAG: ${{ needs.build-be-fetch.outputs.sha }}
+          WEB_SHA_TAG: ${{ needs.build-web.outputs.sha }}
+          PROJECT_NAME: ${{ env.PROJECT_NAME }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSWORD }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          envs: DB_CHANGED,API_SHA_TAG,BE_FETCH_SHA_TAG,WEB_SHA_TAG,PROJECT_NAME
+          script: |
+            echo "DB_CHANGED: $DB_CHANGED"
+            echo "API_SHA_TAG: $API_SHA_TAG"
+            echo "BE_FETCH_SHA_TAG: $BE_FETCH_SHA_TAG"
+            echo "WEB_SHA_TAG: $WEB_SHA_TAG"
+            echo "PROJECT_NAME: $PROJECT_NAME"
+            cd /tmp/dev-$PROJECT_NAME
+            mv .env.dev .env
+            if [ -z $API_SHA_TAG ]; then
+              API_SHA_TAG=$(docker service inspect dev-nitrotype-tracker_api --pretty | grep image= | awk -F: '{print $2}')
+              echo "API did not change. Using $API_SHA_TAG tag."
+            fi
+            if [ -z $BE_FETCH_SHA_TAG ]; then
+              BE_FETCH_SHA_TAG=$(docker service inspect dev-nitrotype-tracker_be-fetch --pretty | grep image= | awk -F: '{print $2}')
+              echo "BE_FETCH did not change. Using $BE_FETCH_SHA_TAG tag."
+            fi
+            if [ -z $WEB_SHA_TAG ]; then
+              WEB_SHA_TAG=$(docker service inspect dev-nitrotype-tracker_web --pretty | grep image= | awk -F: '{print $2}')
+              echo "WEB did not change. Using $WEB_SHA_TAG tag."
+            fi
+            sed -i "s/API_TAG=/API_TAG=$API_SHA_TAG/g" .env
+            sed -i "s/BE_FETCH_TAG=/BE_FETCH_TAG=$BE_FETCH_SHA_TAG/g" .env
+            sed -i "s/WEB_TAG=/WEB_TAG=$WEB_SHA_TAG/g" .env
+            sed -i "s/#- admin/- admin/g" docker-compose.yml
+            sed -i "s/#- internet/- internet/g" docker-compose.yml
+            export $(cat .env | xargs)
+            echo "Redeploying the stack"
+            # TODO: Do this only for first time deployment, otherwise do this only after DB deployment.
+            docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+            if [ "$DB_CHANGED" == "true" ]; then
+              echo "Database has changed, deploying it."
+              NETWORK_NAME=$(docker compose -f swarm-compose.yml config --format json | jq -r '.networks["local"].name')
+              #docker compose stop api
+              #docker compose stop be-fetch
+              docker run --rm \
+                --network $NETWORK_NAME \
+                -v /tmp/dev-$PROJECT_NAME/db/migrations:/db/migrations \
+                --env-file /data/dev-$PROJECT_NAME/secrets.env \
+                amacneil/dbmate:latest --wait up
+              if [ $? -ne 0 ]; then
+                echo "Migration failed, restarting old backend containers"
+                # TODO: Rescale old services, do not update it.
+                docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+                #docker compose start be-fetch
+                #docker compose start api
+                exit 1
+              fi
+            fi
+            #if [ -z $API_SHA_TAG ]; then
+            #  echo "API is not being deployed, restarting old container."
+            #  docker compose start api
+            #fi
+            #if [ -z $BE_FETCH_SHA_TAG ]; then
+            #  echo "BE FETCH is not being deployed, restarting old container."
+            #  docker compose start api
+            #fi
+            #echo "Deploying the following services: $DEPLOY_SERVICES"
+            #docker compose up -d $DEPLOY_SERVICES
+            #docker compose cp .env doneman:/.env
+            #docker compose cp docker-compose.yml doneman:/docker-compose.yml
+            #docker compose restart doneman
+            echo "Redeploying the stack"
+            docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
