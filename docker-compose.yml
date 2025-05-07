@@ -50,6 +50,8 @@ services:
     mem_reservation: 750m
     env_file:
       - /data/${VOLUME_ROOT}/secrets.env
+    environment:
+      - HEALTHCHECK_URI=http://localhost:8080/health
     depends_on:
       postgres:
         condition: service_healthy
