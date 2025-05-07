@@ -856,7 +856,7 @@ jobs:
             echo "Redeploying the stack"
             # TODO: Do this only for first time deployment, otherwise do this only after DB deployment.
             # We cannot call this twice during a deployment, or we need to wait till the first deployment finishes
-            #docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml
+            #docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml --detach=false
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose -f swarm-compose.yml config --format json | jq -r '.networks["local"].name')
@@ -870,7 +870,7 @@ jobs:
               if [ $? -ne 0 ]; then
                 echo "Migration failed, restarting old backend containers"
                 # TODO: Rescale old services, do not update it.
-                docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml
+                docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml --detach=false
                 #docker compose start be-fetch
                 #docker compose start api
                 exit 1
@@ -890,7 +890,7 @@ jobs:
             #docker compose cp docker-compose.yml doneman:/docker-compose.yml
             #docker compose restart doneman
             echo "Redeploying the stack"
-            docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml
+            docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml --detach=false
 
   deploy-develop:
     name: Deploy development
@@ -1075,7 +1075,7 @@ jobs:
             echo "Redeploying the stack"
             # TODO: Do this only for first time deployment, otherwise do this only after DB deployment.
             # We cannot call this twice during a deployment, or we need to wait till the first deployment finishes
-            #docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+            #docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml --detach=false
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose -f swarm-compose.yml config --format json | jq -r '.networks["local"].name')
@@ -1089,7 +1089,7 @@ jobs:
               if [ $? -ne 0 ]; then
                 echo "Migration failed, restarting old backend containers"
                 # TODO: Rescale old services, do not update it.
-                docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+                docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml --detach=false
                 #docker compose start be-fetch
                 #docker compose start api
                 exit 1
@@ -1109,4 +1109,4 @@ jobs:
             #docker compose cp docker-compose.yml doneman:/docker-compose.yml
             #docker compose restart doneman
             echo "Redeploying the stack"
-            docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+            docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml --detach=false
