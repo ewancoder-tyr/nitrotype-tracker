@@ -47,7 +47,7 @@ services:
         limits:
           memory: 1g
         reservations:
-          memory: 750m
+          memory: 70m
       placement:
         constraints:
           - ${SWARM_INFRA_CONSTRAINT}
@@ -74,7 +74,7 @@ services:
         limits:
           memory: 1g
         reservations:
-          memory: 750m
+          memory: 20m
       placement:
         constraints:
           - ${SWARM_INFRA_CONSTRAINT}
@@ -96,7 +96,7 @@ services:
         limits:
           memory: 1g
         reservations:
-          memory: 750m
+          memory: 70m
       placement:
         constraints:
           - ${SWARM_SERVICE_CONSTRAINT}
@@ -116,7 +116,7 @@ services:
         limits:
           memory: 100m
         reservations:
-          memory: 75m
+          memory: 20m
       placement:
         constraints:
           - ${SWARM_SERVICE_CONSTRAINT}
@@ -132,7 +132,7 @@ services:
         limits:
           memory: 100m
         reservations:
-          memory: 75m
+          memory: 20m
       placement:
         constraints:
           - ${SWARM_SERVICE_CONSTRAINT}
