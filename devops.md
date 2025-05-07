@@ -2,7 +2,37 @@
 
 Collection of notes to manage my deployments.
 
+## Easy Swarm rebalance
+
+(create aliases in local bashrc for these)
+
+`docker service ls --format '{{.Name}}' | xargs -P 0 -I {} docker service update --force {}`
+
+> This command rebalances all services across all nodes in parallel with zero downtime.
+
+`docker stack ps NAME --filter "desired-state=running"`
+
+> This command lists all services in a stack without failed/removed/old containers (current state).
+
 ## New Droplet
+
+- Check there is no swap: free -h, swapon --show
+- Check there is enough space: df -h
+- Create swap: `fallocate -l 2G /swapfile` (2gb for 2gb system, 1gb for 1gb system)
+- `chmod 600 /swapfile`
+- `mkswap /swapfile`
+- `swapon /swapfile`
+- `echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab`
+- `free -h`
+- Check current swappiness: `cat /proc/sys/vm/swappiness` (should be close to 0 for most performance)
+- `sysctl vm.swappiness=10` (for server 10 is good)
+- Set up one more expensive thing to be less swappable
+- `cat /proc/sys/vm/vfs_cache_pressure` (100?)
+- `sysctl vm.vfs_cache_pressure=50` (set to at least 50)
+- THESE BOTH are just for session, for permanent - edit /etc/sysctl.conf:
+- `vm.swappiness=10`
+- `vm.vfs_cache_pressure=50`
+- reboot and test that changes persist
 
 - Add SSH keys to authorized_keys
 - Disallow password logins & change port, `systemctl restart sshd`
