@@ -28,6 +28,7 @@ module.exports = function (config) {
             type: 'text',
             file: 'coverage.txt'
         },
+      //
         reporters: ['sabarivka', 'progress', 'kjhtml', 'coverage'],
         browsers: ['Chrome'],
         restartOnFileChange: true
