@@ -19,6 +19,23 @@ import (
 	"github.com/sokkalf/slog-seq"
 )
 
+func updateHealthCheckFile() {
+	filePath := os.Getenv("HEALTHCHECK_FILE")
+	if filePath == "" {
+		slog.Error("HEALTHCHECK_FILE environment variable is not set")
+		return
+	}
+
+	for {
+		currentTime := time.Now().String()
+		err := os.WriteFile(filePath, []byte(currentTime), 0644)
+		if err != nil {
+			slog.Error("Failed to write to health check file", "error", err)
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
 func main() {
 	podId := uuid.New().String()
 
@@ -104,6 +121,7 @@ func main() {
 	pool := goredis.NewPool(client)
 	rs := redsync.New(pool)
 
+	go updateHealthCheckFile()
 	runLoop(db, client, rs)
 }
 
