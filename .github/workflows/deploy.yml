@@ -855,7 +855,8 @@ jobs:
             export $(cat .env | xargs)
             echo "Redeploying the stack"
             # TODO: Do this only for first time deployment, otherwise do this only after DB deployment.
-            docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml
+            # We cannot call this twice during a deployment, or we need to wait till the first deployment finishes
+            #docker stack deploy nitrotype-tracker --compose-file swarm-compose.yml
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose -f swarm-compose.yml config --format json | jq -r '.networks["local"].name')
@@ -1073,7 +1074,8 @@ jobs:
             export $(cat .env | xargs)
             echo "Redeploying the stack"
             # TODO: Do this only for first time deployment, otherwise do this only after DB deployment.
-            docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
+            # We cannot call this twice during a deployment, or we need to wait till the first deployment finishes
+            #docker stack deploy dev-nitrotype-tracker --compose-file swarm-compose.yml
             if [ "$DB_CHANGED" == "true" ]; then
               echo "Database has changed, deploying it."
               NETWORK_NAME=$(docker compose -f swarm-compose.yml config --format json | jq -r '.networks["local"].name')
