@@ -704,7 +704,7 @@ jobs:
           passphrase: ${{ secrets.PASSWORD }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          source: "db,docker-compose.yml,.env.prod,networks.prod.yml"
+          source: "db,docker-compose.yml,.env.prod"
           target: /tmp/${{ env.PROJECT_NAME }}
 
       - name: Deploy to DO
@@ -809,7 +809,7 @@ jobs:
           passphrase: ${{ secrets.PASSWORD_DEV }}
           key: ${{ secrets.KEY_DEV }}
           port: ${{ secrets.PORT_DEV }}
-          source: "db,docker-compose.yml,.env.dev,networks.dev.yml"
+          source: "db,docker-compose.yml,.env.dev"
           target: /tmp/dev-${{ env.PROJECT_NAME }}
 
       - name: Deploy to DEV server
