@@ -86,6 +86,8 @@ services:
     restart: unless-stopped
     env_file:
       - /data/${VOLUME_ROOT}/secrets.env
+    environment:
+      - HEALTHCHECK_URI=http://localhost:8080/health
     networks:
       - local
       - public
@@ -107,6 +109,9 @@ services:
     restart: unless-stopped
     env_file:
       - /data/${VOLUME_ROOT}/secrets.env
+    environment:
+      - HEALTHCHECK_TYPE=file
+      - HEALTHCHECK_FILE=/tmp/healthcheck-${PREFIX}nitrotype-tracker-be-fetch
     networks:
       - local
       - infra
