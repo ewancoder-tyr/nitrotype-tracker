@@ -111,7 +111,7 @@ services:
       - /data/${VOLUME_ROOT}/secrets.env
     environment:
       - HEALTHCHECK_TYPE=file
-      - HEALTHCHECK_FILE=/tmp/healthcheck-${PREFIX}nitrotype-tracker-be-fetch
+      - HEALTHCHECK_FILE=/tmp/healthcheck
     networks:
       - local
       - infra
