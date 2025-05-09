@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Caching.Memory;
 using NitroType.Tracker.Domain;
 using Npgsql;
 using StackExchange.Redis;
@@ -9,6 +10,8 @@ var isDebug = false;
 #if DEBUG
 isDebug = true;
 #endif
+
+var cache = new MemoryCache(new MemoryCacheOptions());
 
 var config = TyrHostConfiguration.Default(
     builder.Configuration,
@@ -62,6 +65,10 @@ _ = Task.Run(async () =>
 
 app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepository repository) =>
 {
+    var cached = cache.Get<List<PlayerInfo>>(team);
+    if (cached is not null)
+        return cached;
+
     var sw = new Stopwatch();
     sw.Start();
 
@@ -88,6 +95,9 @@ app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepositor
 
     sw.Stop();
     logger.LogInformation("Gathered data for team {Team}, took {Seconds} seconds", team, sw.Elapsed.TotalSeconds);
+
+    cache.Set(team, result, TimeSpan.FromMinutes(3));
+
     return result;
 });
 
