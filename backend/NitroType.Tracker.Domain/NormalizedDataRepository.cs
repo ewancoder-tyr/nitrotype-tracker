@@ -153,11 +153,11 @@ public sealed class NormalizedDataRepository
             COALESCE(l.races_played - s.races_played, l.races_played) as races_played,
             l.timestamp,
             COALESCE(l.secs - s.secs, l.secs) as secs,
-            COALESCE(l.races_played - d.races_played_day_ago, 0) as races_played_diff,
-            COALESCE(s.typed, 0) as starting_typed
+            COALESCE(l.races_played - d.races_played_day_ago, 0) as races_played_diff
         FROM LatestStats l
         LEFT JOIN StartingStats s ON l.username = s.username
         LEFT JOIN DayAgoStats d ON l.username = d.username
+        WHERE COALESCE(l.typed - s.typed, l.typed) > 0
         ORDER BY typed DESC";
 
         cmd.Parameters.AddWithValue("@team", team.ToUpperInvariant());
@@ -172,9 +172,6 @@ public sealed class NormalizedDataRepository
             {
                 while (await reader.ReadAsync().ConfigureAwait(false))
                 {
-                    if (reader.GetInt32(9) == 0)
-                        continue; // Do not show players who did not type yet in this period.
-
                     results.Add(new NormalizedPlayerData
                     {
                         Username = reader.GetString(0),
