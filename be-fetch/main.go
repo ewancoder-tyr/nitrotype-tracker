@@ -142,7 +142,8 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 			json, err := FetchTeamData("https://nitrotype.com", team)
 			if err != nil {
 				slog.Error("Failed to fetch data from API", "error", err)
-				mutex.Unlock()
+				// TODO: Unlock, unless 429.
+				//mutex.Unlock() // Do not unlock the mutex on failure, it might have been 429.
 				continue
 			}
 
