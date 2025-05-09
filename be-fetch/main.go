@@ -133,6 +133,9 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 
 	for {
 		for _, team := range teamInfos {
+			// Make sure this timeout is on the top - to wait between multiple team requests.
+			time.Sleep(time.Duration(1500+rand.Intn(3500)) * time.Millisecond)
+
 			mutex := rs.NewMutex("tnt_team_lock:"+team, redsync.WithExpiry(4*time.Minute))
 			if err := mutex.TryLock(); err != nil {
 				slog.Debug("Could not acquire team lock, skipping", "error", err, "team", team)
@@ -180,8 +183,6 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 			}
 
 			slog.Info("Successfully finished processing (getting/saving) team data", "team", team)
-
-			time.Sleep(time.Duration(1500+rand.Intn(2500)) * time.Millisecond)
 		}
 
 		time.Sleep(time.Duration(10000+rand.Intn(20000)) * time.Millisecond)
