@@ -114,6 +114,7 @@ public sealed class NormalizedDataRepository
     }
 
     // TODO: Review this logic.
+    // TODO: Currently the logic is wrong: make use of joinStamp to get player data from the date when they joined, not from the league start.
     public async Task<List<NormalizedPlayerData>> GetTeamStatsAsync(string team, DateTime startDate)
     {
         var connection = await _dataSource.OpenConnectionAsync().ConfigureAwait(false);
