@@ -125,6 +125,7 @@ public sealed class NormalizedDataRepository
                 username, team, typed, errors, name, races_played, timestamp, secs
             FROM normalized_data_v2
             WHERE team = @team
+                AND timestamp >= @startDate
             ORDER BY username, timestamp DESC
         ),
         StartingStats AS (
