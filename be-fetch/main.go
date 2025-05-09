@@ -158,9 +158,8 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 
 			oldHashStr, err := rdb.Get(context.Background(), "tnt_team_data_hash:"+team).Result()
 			if err != nil && err != redis.Nil {
-				slog.Error("test")
-				os.Exit(1)
 				slog.Debug("Did not get hash value from redis, creating a new one", "error", err)
+				oldHashStr = "_mock_"
 			}
 
 			if newHashStr == oldHashStr {
