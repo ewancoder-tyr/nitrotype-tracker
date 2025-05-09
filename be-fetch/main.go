@@ -170,14 +170,14 @@ func runLoop(db *pgx.Conn, rdb *redis.Client, rs *redsync.Redsync) {
 			err = StoreTeamData(db, team, json)
 			if err != nil {
 				slog.Error("Failed to store data in the database", "error", err)
-				mutex.Unlock()
+				//mutex.Unlock()
 				continue
 			}
 
 			err = rdb.Set(context.Background(), "tnt_team_data_hash:"+team, newHashStr, 0).Err()
 			if err != nil {
 				slog.Error("Failed to store hash in Redis", "error", err)
-				mutex.Unlock()
+				//mutex.Unlock()
 				continue
 			}
 
