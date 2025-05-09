@@ -2,6 +2,12 @@
 
 Collection of notes to manage my deployments.
 
+## Maintenance
+
+`journalctl --vacuum-time=7d` - clears logs from /var/log later than 7 days ago
+`apt-get clean` - clears downloaded apt packages from /var/cache
+`/var/cache/netdata` eats lots of space - monitor this
+
 ## Easy Swarm rebalance
 
 (create aliases in local bashrc for these)
@@ -39,6 +45,7 @@ Collection of notes to manage my deployments.
 - apt update && apt upgrade && reboot
 - add to NetData (get link from netdata website) (or update it)
 - `TERM=rxvt` to ~/.bashrc, otherwise clear doesn't work within foot
+- Alias ctop to bashrc: `alias ctop='docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock quay.io/vektorlab/ctop:latest'`
 - `apt install wireguard`
 - `wg genkey | tee privatekey | wg pubkey > publickey`
 - `cat privatekey && cat publickey`
@@ -75,6 +82,7 @@ AllowedIPs = 10.8.0.3/32
 Allow forwarding between hosts (on server)
 
 `iptables -A FORWARD -i wg0 -o wg0 -j ACCEPT`
+`apt install iptables-persistent` (will persist them between boots, auto-configures on install)
 
 ### Swarm
 
