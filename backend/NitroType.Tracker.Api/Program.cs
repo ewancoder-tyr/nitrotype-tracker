@@ -58,7 +58,15 @@ _ = Task.Run(async () =>
 {
     while (true)
     {
-        await normalizer.ProcessTeamDataAsync();
+        try
+        {
+            await normalizer.ProcessTeamDataAsync();
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to normalize data");
+        }
+
         await Task.Delay(TimeSpan.FromMinutes(2));
     }
 });
