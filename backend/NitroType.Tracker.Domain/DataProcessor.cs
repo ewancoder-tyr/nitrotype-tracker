@@ -66,8 +66,8 @@ public record NitroTypeData(
 public record Results(
     TeamInfo? Info,
     Member[]? Members,
-    Stat[]? Stats,
-    SeasonMember[]? Season,
+    //Stat[]? Stats,
+    //SeasonMember[]? Season,
     object? Leaderboard, // null in sample, keeping as object
     bool? OnThisTeam
 );
