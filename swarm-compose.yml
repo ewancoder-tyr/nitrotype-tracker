@@ -33,11 +33,11 @@ services:
     restart: unless-stopped
     env_file:
       - /data/${VOLUME_ROOT}/secrets.env
-    #healthcheck:
-    #  test: [ "CMD-SHELL", "pg_isready" ]
-    #  interval: 5s
-    #  timeout: 5s
-    #  retries: 5
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - local
       #- admin    # Disabled in production until needed.
