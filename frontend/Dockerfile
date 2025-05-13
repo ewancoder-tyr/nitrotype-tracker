@@ -20,5 +20,5 @@ FROM nginxinc/nginx-unprivileged:1.27.4-alpine3.21-slim
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /usr/src/app/dist/nitrotype-tracker/browser /usr/share/nginx/html
 
-HEALTHCHECK CMD wget --spider http://localhost:8080
+HEALTHCHECK CMD ["wget", "--spider", "http://localhost:8080"]
 CMD ["nginx", "-g", "daemon off;"]
