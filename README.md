@@ -150,3 +150,7 @@ Authentication flow supports both JWT and Cookie authentication and works with G
 ### Deployments
 
 Project has 2 environments: development and production. Deployments are incremental: if frontend didn't change we only deploy backend, and wise versa; database can be deployed separately too.
+
+### Infrastructure diagram
+
+![Infrastructure](https://github.com/ewancoder/nitrotype-tracker/blob/main/infra.png?raw=true)
