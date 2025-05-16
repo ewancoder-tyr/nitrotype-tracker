@@ -331,7 +331,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern=v{{major}}
-            type=sha
+            type=sha,format=long,prefix=sha-{{branch}}-
 
       - name: Build and push Docker image
         id: push
@@ -474,7 +474,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern=v{{major}}
-            type=sha
+            type=sha,format=long,prefix=sha-{{branch}}-
 
       - name: Build and push Docker image
         id: push
@@ -653,7 +653,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern=v{{major}}
-            type=sha
+            type=sha,format=long,prefix=sha-{{branch}}-
 
       - name: Build and push Docker image
         id: push
