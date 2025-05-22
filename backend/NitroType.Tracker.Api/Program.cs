@@ -81,7 +81,7 @@ app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepositor
     sw.Start();
 
     // Start of the league season
-    var leagueStart = new DateTime(2025, 5, 15, 0, 0, 0);
+    var leagueStart = new DateTime(2025, 5, 22, 3, 0, 0);
 
     var stats = await repository.GetTeamStatsAsync(team, leagueStart);
 
