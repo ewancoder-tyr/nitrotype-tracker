@@ -81,9 +81,10 @@ app.MapGet("/api/statistics/{team}", async (string team, NormalizedDataRepositor
     sw.Start();
 
     // Start of the league season
-    var leagueStart = new DateTime(2025, 6, 26, 2, 0, 0);
+    var now = DateTime.UtcNow;
+    var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0);
 
-    var stats = await repository.GetTeamStatsAsync(team, leagueStart);
+    var stats = await repository.GetTeamStatsAsync(team, monthStart);
 
     // Convert to the expected PlayerInfo format
     var result = stats.Select(s => new PlayerInfo
