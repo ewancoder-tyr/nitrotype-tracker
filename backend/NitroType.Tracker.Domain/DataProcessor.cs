@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace NitroType.Tracker.Domain;
@@ -6,13 +7,16 @@ public sealed class DataProcessor
 {
     private readonly NpgsqlDataSource _dataSource;
     private readonly NormalizedDataRepository _normalizedDataRepository;
+    private readonly ILogger<DataProcessor> _logger;
 
     public DataProcessor(
         NpgsqlDataSource dataSource,
-        NormalizedDataRepository normalizedDataRepository)
+        NormalizedDataRepository normalizedDataRepository,
+        ILogger<DataProcessor> logger)
     {
         _dataSource = dataSource;
         _normalizedDataRepository = normalizedDataRepository;
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<RawTeamEntry> GetNewEntriesAsync(string? team = null)
@@ -40,10 +44,20 @@ public sealed class DataProcessor
                 var id = reader.GetInt64(2);
                 team = reader.GetString(3);
 
-                var data = JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                           ?? throw new InvalidOperationException("Could not deserialize the json.");
+                NitroTypeData? data = null;
+                try
+                {
+                    data = JsonSerializer.Deserialize<NitroTypeData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                               ?? throw new InvalidOperationException("Could not deserialize the json.");
 
-                yield return new(team, data, timestamp, id);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Failed to deserialize json, skipping for the sake of the app.");
+                }
+
+                if (data is not null)
+                    yield return new(team, data, timestamp, id);
             }
         }
         finally
