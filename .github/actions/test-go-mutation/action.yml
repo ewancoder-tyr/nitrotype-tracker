@@ -1,0 +1,24 @@
+name: test-go-mutation
+inputs:
+  folder:
+    description: Working directory of .NET solution
+    required: true
+permissions:
+  contents: read
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ inputs.folder }}/go.mod
+
+    - name: Mutation testing
+      working-directory: ${{ inputs.folder }}
+      shell: bash
+      run: |
+        go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.5.0
+        gremlins unleash > output
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat output >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

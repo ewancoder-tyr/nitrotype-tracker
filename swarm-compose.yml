@@ -1,38 +1,47 @@
-# Manually export $(cat .env | xargs)
-# Add tag to every service (currently deployed for missing)
-# docker stack deploy dev-nitrotype-tracker --compose-file docker-compose.yml
-# - need to check whether this upgrades services automatically or I need to do some kind of pull.
-
 networks:
-  internet:
+  internet: # For UDP services to expose ports on Development env.
+    name: tyr-$ENV-nitrotype-tracker-net-internet
   local:
-    name: swarm-${PREFIX}nitrotype-tracker-local-internal
-    attachable: true # So that we can attach to the database for deployment.
-    driver: overlay
+    name: tyr-$ENV-nitrotype-tracker-net-local
+    internal: true
+  deploy:
+    name: tyr-$ENV-nitrotype-tracker-net-deploy
+    attachable: true # From migrations container.
     internal: true
   public:
-    name: tyr-proxy-internal
-    driver: overlay
+    name: tyr-$ENV-net-proxy
     external: true
   infra:
-    name: tyr-infrastructure-internal
-    driver: overlay
+    name: tyr-$ENV-net-infrastructure
     external: true
   admin:
-    name: tyr-administration-internal
-    driver: overlay
+    name: tyr-$ENV-net-administration
+    external: true
+
+secrets:
+  tyr-$ENV-sec-postgres-password:
+    external: true
+  tyr-$ENV-sec-dp:
+    external: true
+  tyr-$ENV-sec-env:
+    external: true
+  tyr-$ENV-nitrotype-tracker-sec-env:
     external: true
 
 services:
   postgres:
     image: postgres:17
+    user: 2000:2000
     volumes:
-      - /data/${VOLUME_ROOT}/postgres:/var/lib/postgresql/data
+      - /data/tyr/$ENV/nitrotype-tracker/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
     ports:
       - ${POSTGRES_PORT}
-    restart: unless-stopped
-    env_file:
-      - /data/${VOLUME_ROOT}/secrets.env
+    secrets:
+      - source: tyr-$ENV-sec-postgres-password
+        target: db-password
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres" ]
       interval: 5s
@@ -40,7 +49,8 @@ services:
       retries: 5
     networks:
       - local
-      - admin    # Disabled in production until needed.
+      - deploy
+      #- admin    # Disabled in production until needed.
       #- internet # Needed for development env to expose ports to host.
     deploy:
       resources:
@@ -54,12 +64,13 @@ services:
 
   cache:
     image: valkey/valkey
-    command: valkey-server --save 60 1
+    user: 2000:2000
+    command: valkey-server --save 60 1 --dir /data
+    volumes:
+      - /data/tyr/$ENV/nitrotype-tracker/cache:/data
     restart: unless-stopped
     ports:
       - ${CACHE_PORT}
-    env_file:
-      - /data/${VOLUME_ROOT}/secrets.env
     healthcheck:
       test: [ "CMD", "valkey-cli", "ping" ]
       interval: 5s
@@ -80,12 +91,15 @@ services:
           - ${SWARM_INFRA_CONSTRAINT}
 
   api:
-    image: ghcr.io/ewancoder/nitrotype-tracker-api:${API_TAG}
-    volumes:
-      - /root/dp.pfx:/app/dp.pfx
+    image: ghcr.io/ewancoder-tyr/nitrotype-tracker-api:${API_TAG}
     restart: unless-stopped
-    env_file:
-      - /data/${VOLUME_ROOT}/secrets.env
+    secrets:
+      - source: tyr-$ENV-sec-dp
+        target: dp.pfx
+      - source: tyr-$ENV-sec-env
+        target: global-secrets.env
+      - source: tyr-$ENV-nitrotype-tracker-sec-env
+        target: secrets.env
     environment:
       - HEALTHCHECK_URI=http://localhost:8080/health
     networks:
@@ -105,17 +119,22 @@ services:
           - ${SWARM_SERVICE_CONSTRAINT}
 
   be-fetch:
-    image: ghcr.io/ewancoder/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
+    image: ghcr.io/ewancoder-tyr/nitrotype-tracker-be-fetch:${BE_FETCH_TAG}
     restart: unless-stopped
-    env_file:
-      - /data/${VOLUME_ROOT}/secrets.env
+    secrets:
+      - source: tyr-$ENV-sec-dp
+        target: dp.pfx
+      - source: tyr-$ENV-sec-env
+        target: global-secrets.env
+      - source: tyr-$ENV-nitrotype-tracker-sec-env
+        target: secrets.env
     environment:
       - HEALTHCHECK_TYPE=file
       - HEALTHCHECK_FILE=/tmp/healthcheck
     networks:
       - local
       - infra
-      - internet
+      - internet # Needed to get data from external API.
     deploy:
       replicas: ${BE_FETCH_REPLICAS}
       resources:
@@ -128,7 +147,7 @@ services:
           - ${SWARM_SERVICE_CONSTRAINT}
 
   web:
-    image: ghcr.io/ewancoder/nitrotype-tracker-web:${WEB_TAG}
+    image: ghcr.io/ewancoder-tyr/nitrotype-tracker-web:${WEB_TAG}
     restart: unless-stopped
     networks:
       - public

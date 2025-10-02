@@ -3,6 +3,7 @@
     <UserSecretsId>03ec3fd8-e559-4d31-b204-5e314fd56a73</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="DotNetEnv" />
     <PackageReference Include="Google.Apis.Auth" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" />

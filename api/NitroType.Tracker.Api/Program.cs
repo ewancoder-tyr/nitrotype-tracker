@@ -5,7 +5,7 @@ using Npgsql;
 using StackExchange.Redis;
 using Tyr.Framework;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = TyrApplication.CreateBuilder(args);
 var isDebug = false;
 #if DEBUG
 isDebug = true;

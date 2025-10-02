@@ -34,6 +34,7 @@ public sealed class GoogleUserProvider(IHttpContextAccessor httpContextAccessor)
 }
 
 public sealed record TyrHostConfiguration(
+    string? GlobalCacheConnectionString,
     string? CacheConnectionString,
     string DataProtectionKeysPath,
     string DataProtectionCertPath,
@@ -53,7 +54,7 @@ public sealed record TyrHostConfiguration(
 {
     public bool IsDebug { get; private init; }
 
-    public bool StoreDataProtectionKeysOnCache { get; private init; } = CacheConnectionString is not null;
+    public bool StoreDataProtectionKeysOnCache { get; private init; } = GlobalCacheConnectionString is not null;
 
     public string UniqueAppKey => $"{Environment}_{UniqueAppName}";
 
@@ -85,15 +86,24 @@ public sealed record TyrHostConfiguration(
         if (environment != "Production")
             authCookieName = $"{authCookieName}_{environment}";
 
+        var globalCacheConnectionString = TryReadConfig("GlobalCacheConnectionString", configuration);
+        if (globalCacheConnectionString is not null)
+            globalCacheConnectionString += ",abortConnect=false";
+
         var cacheConnectionString = TryReadConfig("CacheConnectionString", configuration);
         if (cacheConnectionString is not null)
             cacheConnectionString += ",abortConnect=false,defaultDatabase=1";
 
+        var dataProtectionCertPath = File.Exists("/run/secrets/dp.pfx")
+            ? "/run/secrets/dp.pfx"
+            : "df.pfx";
+
         // TODO: Implement cookies authentication for typingrealm.org too.
         return new(
+            globalCacheConnectionString,
             cacheConnectionString,
             DataProtectionKeysPath: "/app/dataprotection",
-            DataProtectionCertPath: "dp.pfx",
+            DataProtectionCertPath: dataProtectionCertPath,
             DataProtectionCertPassword: isDebug ? string.Empty : ReadConfig("DpCertPassword", configuration),
             AuthCookieName: authCookieName,
             CookiesDomain: TryReadConfig("CookiesDomain", configuration) ?? "typingrealm.com",
@@ -126,6 +136,7 @@ public sealed record TyrHostConfiguration(
 // TODO: When Redis is required for host - ensure it doesn't start without valid environment variable.
 public static class HostExtensions
 {
+    public static readonly int DataProtectionDatabase = 5; // DataProtection database in cache/Redis.
     public static readonly string PodId = Guid.NewGuid().ToString();
     public static readonly string ConsoleLogOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}";
     public static async ValueTask ConfigureTyrApplicationBuilderAsync(
@@ -152,9 +163,12 @@ public static class HostExtensions
 
             var dpBuilder = builder.Services.AddDataProtection();
 
-            if (config.StoreDataProtectionKeysOnCache && redis is not null)
+            if (config.GlobalCacheConnectionString is not null)
             {
-                dpBuilder = dpBuilder.PersistKeysToStackExchangeRedis(redis, $"{config.UniqueAppKey}_dataprotection");
+                var globalCache = await ConnectionMultiplexer.ConnectAsync(config.GlobalCacheConnectionString)
+                    .ConfigureAwait(false);
+
+                dpBuilder = dpBuilder.PersistKeysToStackExchangeRedis(() => globalCache.GetDatabase(DataProtectionDatabase), $"{config.UniqueAppKey}_dataprotection");
             }
             else
                 dpBuilder = dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(config.DataProtectionKeysPath));
@@ -442,5 +456,16 @@ internal sealed class BearerSchemeTransformer(IAuthenticationSchemeProvider auth
             document.Components ??= new OpenApiComponents();
             document.Components.SecuritySchemes = requirements;
         }
+    }
+}
+
+public static class TyrApplication
+{
+    public static WebApplicationBuilder CreateBuilder(string[] args)
+    {
+        DotNetEnv.Env.Load("/run/secrets/global-secrets.env");
+        DotNetEnv.Env.Load("/run/secrets/secrets.env");
+
+        return WebApplication.CreateBuilder(args);
     }
 }

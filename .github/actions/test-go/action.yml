@@ -1,0 +1,51 @@
+# Inputs:
+# - env.BADGE_GIST_ID
+# Outputs:
+# - Writes to GITHUB_STEP_SUMMARY
+# - env.COVERAGE (via GITHUB_ENV) - for internal use
+name: test-go
+inputs:
+  folder:
+    description: Working directory of .NET solution
+    required: true
+  coverageId:
+    description: Coverage identifier for uploading GIST
+    required: true
+  gistSecret:
+    description: GIST secret for uploading badge status
+    required: true
+  coverageLabel:
+    description: Badge label for the coverage.
+    required: true
+permissions:
+  contents: read
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ inputs.folder }}/go.mod
+
+    - name: Unit testing
+      working-directory: ${{ inputs.folder }}
+      shell: bash
+      run: |
+        go test --cover > output
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat output >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo COVERAGE=$(cat output | grep '% of statement' | awk '{print $2}') >> $GITHUB_ENV
+
+    - name: Create coverage badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      if: "!cancelled()"
+      with:
+        auth: ${{ inputs.gistSecret }}
+        gistID: ${{ env.BADGE_GIST_ID }}
+        filename: ${{ inputs.coverageId }}-coverage-${{ github.ref_name }}.json
+        label: ${{ inputs.coverageLabel }}
+        message: ${{ env.COVERAGE }}%
+        valColorRange: ${{ env.COVERAGE }}
+        maxColorRange: 80
+        minColorRange: 0
