@@ -1,4 +1,4 @@
 export const config = {
-    apiUri: 'https://api.tnt.typingrealm.com',
+    apiUri: 'https://api.tnt.typingrealm.org',
     environment: 'Production'
 };
