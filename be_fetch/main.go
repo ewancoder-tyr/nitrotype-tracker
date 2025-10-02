@@ -17,7 +17,52 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/sokkalf/slog-seq"
+
+    "bufio"
+    "strings"
 )
+
+func loadSecretsEnv(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil // Allow not having a file.
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments.
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Split KEY=VALUE.
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue // Ignore malformed lines.
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Remove optional surrounding quotes.
+		value = strings.Trim(value, `"'`)
+
+		if key != "" {
+			if err := os.Setenv(key, value); err != nil {
+				return fmt.Errorf("Failed to set env %s: %w", key, err)
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("Error reading secrets file: %w", err)
+	}
+
+	return nil
+}
 
 func updateHealthCheckFile() {
 	filePath := os.Getenv("HEALTHCHECK_FILE")
@@ -37,6 +82,16 @@ func updateHealthCheckFile() {
 }
 
 func main() {
+	if err := loadSecretsEnv("/run/secrets/global-secrets.env"); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	if err := loadSecretsEnv("/run/secrets/secrets.env"); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
 	podId := uuid.New().String()
 
 	seqApiKey := os.Getenv("SeqApiKey_Fetch")
