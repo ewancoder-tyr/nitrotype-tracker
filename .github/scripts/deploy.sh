@@ -193,8 +193,8 @@ else
     sed -i "s/\$ENV/$ENV/g" swarm-compose.yml
     # Replace all the secrets with their latest version.
     for secret in $(yq -r '.secrets | keys | .[]' swarm-compose.yml); do
-        base=$(echo "$secret" | sed -E 's/_[0-9]+$//')
-        latest=$(docker secret ls --format '{{.Name}}' | grep -E "^${base}$|^${base}_[0-9]+" | sort -V | tail -n1)
+        base=$(echo "$secret" | sed -E 's/-[0-9]+$//')
+        latest=$(docker secret ls --format '{{.Name}}' | grep -E "^${base}$|^${base}-[0-9]+" | sort -V | tail -n1)
         if [ "$secret" != "$latest" ]; then
 
             echo "Replacing latest secret: $secret -> $latest"
