@@ -1,5 +1,9 @@
 # NitroType Tracker
 
+Main repo: [typingrealm/nitrotype-tracker](https://github.com/ewancoder-tyr/aircaptain)
+
+Mirrors: [ewancoder](https://github.com/ewancoder/nitrotype-tracker) [gitlab](https://gitlab.com/ewancoder/nitrotype-tracker)
+
 ![license](https://img.shields.io/github/license/ewancoder/nitrotype-tracker?color=blue)
 ![activity](https://img.shields.io/github/commit-activity/m/ewancoder/nitrotype-tracker)
 
